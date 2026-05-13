@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#f9f8f5"/>
+<title>Aivest · Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+/* ── TOKENS ─────────────────────────────────────────────────────── */
+:root{
+  --bg:#f9f8f5;--s0:#ffffff;--s1:#f4f2ee;--s2:#edeae3;--s3:#e3dfd7;
+  --bdr:#e0dbd1;--bdr2:#cec9be;
+  --gold:#9a6f1a;--gold-l:#c49a3c;--gold-bg:#fdf6e3;--gold-bd:#e8d080;--gold-dk:#7a5410;
+  --gr:#1a8a52;--gr-bg:#edf9f2;--gr-bd:#7ecfa8;
+  --am:#b06800;--am-bg:#fff8ea;--am-bd:#e8c058;
+  --rd:#b52030;--rd-bg:#fff0f1;--rd-bd:#f0a0a8;
+  --bl:#1460a0;--bl-bg:#eef5fd;--bl-bd:#80b8e8;
+  --pu:#5e3db0;--pu-bg:#f2effe;--pu-bd:#b8a0e0;
+  --t1:#1c1a16;--t2:#5c5850;--t3:#96928a;--t4:#c0bdb5;
+  --r3:6px;--r5:9px;--r8:13px;--r12:18px;--r16:22px;
+  --sh1:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh2:0 3px 10px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.05);
+  --sh3:0 8px 24px rgba(0,0,0,.10),0 2px 6px rgba(0,0,0,.06);
+  --sh4:0 16px 48px rgba(0,0,0,.12),0 4px 12px rgba(0,0,0,.07);
+  --px:clamp(14px,4vw,48px);--gap:clamp(10px,2vw,20px);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);color:var(--t1);font-family:'Inter',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:99px}
+button,select,input,textarea{font-family:inherit}
+a{color:var(--bl)}
+
+/* ── ANIM ───────────────────────────────────────────────────────── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.afu{animation:fadeUp .26s cubic-bezier(.2,.8,.3,1) both}
+.afi{animation:fadeIn .2s ease both}
+.asi{animation:scaleIn .2s cubic-bezier(.2,.8,.3,1) both}
+.spin{animation:spin .7s linear infinite;display:inline-block}
+
+/* ── TOPBAR ─────────────────────────────────────────────────────── */
+.topbar{position:sticky;top:0;z-index:200;background:rgba(249,248,245,.94);backdrop-filter:blur(16px);border-bottom:1px solid var(--bdr)}
+.topbar-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:0 var(--px);height:clamp(50px,7vw,58px)}
+.logo{font-family:'Instrument Serif',serif;font-size:clamp(15px,2.5vw,20px);color:var(--t1);white-space:nowrap}
+.logo em{color:var(--gold);font-style:italic}
+
+.nav-pills{display:flex;gap:2px;background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r8);padding:3px;flex-shrink:0}
+.npill{display:flex;align-items:center;gap:5px;padding:5px clamp(8px,1.5vw,13px);border-radius:var(--r5);font-size:clamp(10px,1.2vw,12px);font-weight:500;border:none;cursor:pointer;transition:all .15s;background:transparent;color:var(--t2);white-space:nowrap}
+.npill.on{background:var(--s0);color:var(--t1);box-shadow:var(--sh1)}
+.npill:disabled{opacity:.35;cursor:not-allowed}
+.nbadge{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-bd);padding:0 5px;border-radius:99px;font-size:10px;font-weight:700}
+
+@media(max-width:560px){
+  .nav-pills{display:none!important}
+  .botnav{position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(249,248,245,.96);backdrop-filter:blur(12px);border-top:1px solid var(--bdr);display:flex;padding:6px 0 max(10px,env(safe-area-inset-bottom))}
+  .btab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;border:none;cursor:pointer;font-size:9px;font-weight:500;color:var(--t3);background:transparent;transition:color .15s}
+  .btab.on{color:var(--gold)}
+  .btab .ico{font-size:19px}
+  body{padding-bottom:max(68px,calc(54px + env(safe-area-inset-bottom)))}
+}
+@media(min-width:561px){.botnav{display:none}}
+
+.main{max-width:1400px;margin:0 auto;padding:clamp(14px,3vw,28px) var(--px)}
+
+/* ── CARDS ──────────────────────────────────────────────────────── */
+.card{background:var(--s0);border:1px solid var(--bdr);border-radius:var(--r8);box-shadow:var(--sh1);padding:clamp(12px,2vw,18px)}
+.card+.card{margin-top:var(--gap)}
+.card.gold{border-color:var(--gold-bd)}
+.card.em{border-color:var(--gr-bd)}
+
+/* ── CHIPS ──────────────────────────────────────────────────────── */
+.chip{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid;white-space:nowrap}
+.chip.xs{padding:1px 6px;font-size:10px}
+.cg{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-bd)}
+.ce{background:var(--gr-bg);color:var(--gr);border-color:var(--gr-bd)}
+.ca{background:var(--am-bg);color:var(--am);border-color:var(--am-bd)}
+.cr{background:var(--rd-bg);color:var(--rd);border-color:var(--rd-bd)}
+.cb{background:var(--bl-bg);color:var(--bl);border-color:var(--bl-bd)}
+.cp{background:var(--pu-bg);color:var(--pu);border-color:var(--pu-bd)}
+.cn{background:var(--s1);color:var(--t2);border-color:var(--bdr)}
+
+/* ── BUTTONS ────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 14px;font-size:13px;font-weight:500;border-radius:var(--r5);cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap;font-family:inherit}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.sm{padding:4px 10px;font-size:11px}
+.btn.lg{padding:10px 22px;font-size:14px;font-weight:600}
+.btn.xl{padding:12px 28px;font-size:15px;font-weight:600}
+.btn.fw{width:100%}
+.b0{background:var(--s1);color:var(--t1);border-color:var(--bdr)}
+.b0:hover:not(:disabled){background:var(--s2)}
+.bg{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-bd);box-shadow:0 1px 4px rgba(154,111,26,.12)}
+.bg:hover:not(:disabled){background:#faefd0;box-shadow:0 2px 8px rgba(154,111,26,.22)}
+.be{background:var(--gr-bg);color:var(--gr);border-color:var(--gr-bd)}
+.be:hover:not(:disabled){background:#d6f4e8}
+.br{background:var(--rd-bg);color:var(--rd);border-color:var(--rd-bd)}
+.bh{background:transparent;color:var(--t2);border-color:var(--bdr)}
+.bh:hover:not(:disabled){background:var(--s1)}
+.bs{background:var(--gold);color:#fff;border-color:var(--gold);box-shadow:0 2px 6px rgba(154,111,26,.28)}
+.bs:hover:not(:disabled){background:var(--gold-dk)}
+
+/* ── INPUTS ─────────────────────────────────────────────────────── */
+.inp,select,textarea{font-family:inherit;font-size:13px;width:100%;padding:8px 11px;background:var(--s0);color:var(--t1);border:1px solid var(--bdr);border-radius:var(--r5);transition:border-color .18s,box-shadow .18s;resize:vertical}
+.inp:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold-bd);box-shadow:0 0 0 3px rgba(154,111,26,.1)}
+textarea{min-height:80px;line-height:1.55}
+
+/* ── PROGRESS ───────────────────────────────────────────────────── */
+.prog{height:5px;background:var(--s2);border-radius:99px;overflow:hidden}
+.progf{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.2,.8,.3,1)}
+
+/* ── SYNC BAR ───────────────────────────────────────────────────── */
+.sbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 14px;border-radius:var(--r5);border:1px solid;font-size:12px;margin-bottom:16px}
+.sbok{background:var(--gr-bg);color:var(--gr);border-color:var(--gr-bd)}
+.sbwarn{background:var(--am-bg);color:var(--am);border-color:var(--am-bd)}
+.sberr{background:var(--rd-bg);color:var(--rd);border-color:var(--rd-bd)}
+.sboff{background:var(--s1);color:var(--t2);border-color:var(--bdr)}
+.sdot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sdot.p{animation:pulse 1.5s infinite}
+
+/* ── IDEA CARD ──────────────────────────────────────────────────── */
+.icard{background:var(--s0);border:1px solid var(--bdr);border-left-width:3px;border-radius:var(--r8);padding:clamp(10px,2vw,14px);box-shadow:var(--sh1);transition:box-shadow .18s,transform .18s;margin-bottom:8px}
+.icard:hover{box-shadow:var(--sh2);transform:translateY(-1px)}
+.icard.av{background:#fffdf6;box-shadow:var(--sh1),0 0 0 1px var(--gold-bd) inset}
+.sblock{display:flex;gap:10px;align-items:flex-start;margin-top:8px;padding:8px 10px;background:var(--s1);border-radius:var(--r5);border:1px solid var(--bdr)}
+
+/* ── STEPS ──────────────────────────────────────────────────────── */
+.srow{display:flex;gap:10px;padding:9px 0;cursor:pointer;border-bottom:1px solid var(--s2);align-items:flex-start;transition:opacity .2s;user-select:none}
+.srow:last-child{border-bottom:none}
+.srow:hover{opacity:.85}
+.schk{width:20px;height:20px;border-radius:50%;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;border:2px solid var(--bdr2);background:var(--s0);color:var(--gr);transition:all .2s}
+.schk.done{border-color:var(--gr);background:var(--gr-bg)}
+.snum{width:20px;height:20px;border-radius:50%;flex-shrink:0;background:var(--s1);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--t3)}
+
+/* ── CHAT ───────────────────────────────────────────────────────── */
+.ctog{width:100%;display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border:1px solid var(--bdr);border-radius:var(--r8);cursor:pointer;font-size:13px;font-weight:500;background:var(--s0);color:var(--t2);transition:all .2s;box-shadow:var(--sh1)}
+.ctog.open{background:var(--gold-bg);border-color:var(--gold-bd);color:var(--gold);border-radius:var(--r8) var(--r8) 0 0;box-shadow:none}
+.cpanel{background:var(--s0);border:1px solid var(--gold-bd);border-top:none;border-radius:0 0 var(--r8) var(--r8);padding:14px;box-shadow:var(--sh1)}
+.cmsgs{max-height:clamp(180px,28vh,280px);overflow-y:auto;padding-right:2px;margin-bottom:10px}
+.cbub{max-width:84%;padding:8px 12px;font-size:13px;line-height:1.55;white-space:pre-wrap;animation:fadeUp .18s ease both}
+.cbub.u{background:var(--gold-bg);border:1px solid var(--gold-bd);border-radius:var(--r8) var(--r8) 3px var(--r8);color:var(--t1)}
+.cbub.a{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r8) var(--r8) var(--r8) 3px;color:var(--t1)}
+.cav{width:22px;height:22px;border-radius:50%;background:var(--gold-bg);border:1px solid var(--gold-bd);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gold);flex-shrink:0;margin-right:7px;margin-top:2px}
+.qqbtn{font-size:12px;padding:5px 10px;border-radius:var(--r5);background:var(--s1);color:var(--t1);border:1px solid var(--bdr);cursor:pointer;font-family:inherit;transition:all .15s;text-align:left}
+.qqbtn:hover{background:var(--gold-bg);border-color:var(--gold-bd);color:var(--gold-dk)}
+
+/* ── JOURNAL ────────────────────────────────────────────────────── */
+.jentry{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r5);padding:10px 12px;margin-bottom:8px}
+.jentry-hdr{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.jtag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid}
+.jtag-decision{background:#eef5ff;color:#1460a0;border-color:#80b8e8}
+.jtag-apprentissage{background:#f2effe;color:#5e3db0;border-color:#b8a0e0}
+.jtag-contact{background:#edf9f2;color:#1a8a52;border-color:#7ecfa8}
+.jtag-blocage{background:#fff0f1;color:#b52030;border-color:#f0a0a8}
+.jtag-idee{background:#fdf6e3;color:#9a6f1a;border-color:#e8d080}
+.jtag-revue{background:#f4f2ee;color:#5c5850;border-color:#cec9be}
+
+/* ── DASHBOARD ──────────────────────────────────────────────────── */
+.krow{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-bottom:var(--gap)}
+@media(max-width:420px){.krow{grid-template-columns:1fr 1fr}.krow .kcard:last-child{grid-column:1/-1}}
+.kcard{padding:clamp(12px,2vw,18px);text-align:center}
+.kval{font-family:'Instrument Serif',serif;font-size:clamp(22px,4vw,30px);margin-bottom:3px}
+.klbl{font-size:10px;color:var(--t3);font-weight:600;letter-spacing:.07em;text-transform:uppercase}
+.drow{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+.ditm{display:flex;flex-direction:column;align-items:center;gap:4px}
+.dlbl{font-size:10px;color:var(--t2);text-align:center;max-width:64px;line-height:1.3}
+
+/* ── MODAL ──────────────────────────────────────────────────────── */
+.mbg{position:fixed;inset:0;background:rgba(28,26,22,.45);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(6px);padding:16px}
+.modal{background:var(--s0);border:1px solid var(--bdr);border-radius:var(--r12);padding:clamp(20px,4vw,32px);max-width:500px;width:100%;box-shadow:var(--sh4);animation:scaleIn .2s ease;max-height:90vh;overflow-y:auto}
+.mtitle{font-family:'Instrument Serif',serif;font-size:22px;margin-bottom:8px}
+.mlbl{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px}
+
+/* ── LAYOUT ─────────────────────────────────────────────────────── */
+@media(min-width:860px){
+  .wflayout{display:grid;grid-template-columns:300px 1fr;gap:clamp(16px,2.5vw,28px);align-items:start}
+  .wfside{position:sticky;top:calc(clamp(50px,7vw,58px)+16px)}
+}
+@media(max-width:859px){.wflayout{display:block}.wfside{margin-bottom:var(--gap)}}
+@media(min-width:1100px){.igrid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(240px,30vw,340px),1fr));gap:var(--gap)}
+
+/* ── TABS inside project ────────────────────────────────────────── */
+.ptabs{display:flex;gap:3px;border-bottom:2px solid var(--s2);margin-bottom:16px}
+.ptab{padding:8px 14px;font-size:13px;font-weight:500;border:none;border-bottom:2px solid transparent;cursor:pointer;background:transparent;color:var(--t2);margin-bottom:-2px;transition:all .15s}
+.ptab.on{color:var(--gold);border-bottom-color:var(--gold)}
+
+/* ── PHASE INDICATOR ────────────────────────────────────────────── */
+.phrow{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--s2);transition:opacity .3s}
+.phrow:last-child{border-bottom:none}
+.phdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── AGENT STATUS STREAM ────────────────────────────────────────── */
+.astream{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r5);padding:10px 12px;font-size:12px;color:var(--t2);line-height:1.6;white-space:pre-wrap;max-height:160px;overflow-y:auto;margin-top:10px;font-family:monospace}
+
+/* ── MISC ───────────────────────────────────────────────────────── */
+.empty{text-align:center;padding:clamp(32px,6vw,64px) 0;color:var(--t3);font-size:13px;line-height:2}
+.divider{height:1px;background:var(--s2);margin:12px 0}
+.lbl{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+.alert{padding:10px 14px;border-radius:var(--r5);border:1px solid;font-size:12px;line-height:1.6;margin-bottom:12px}
+.alert-warn{background:var(--am-bg);color:var(--am);border-color:var(--am-bd)}
+.alert-ok{background:var(--gr-bg);color:var(--gr);border-color:var(--gr-bd)}
+.alert-info{background:var(--gold-bg);color:var(--gold-dk);border-color:var(--gold-bd)}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div style="flex:1;min-width:0">
+      <div class="logo">Aivest <em>Workspace</em></div>
+    </div>
+    <div id="nav" class="nav-pills"></div>
+    <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+      <div id="syncDot" style="width:8px;height:8px;border-radius:50%;background:var(--bdr2);cursor:pointer" onclick="cycleSync()" title="Drive"></div>
+      <button class="btn bh sm" id="cfgBtn" onclick="openModal('cfgModal')">⚙</button>
+    </div>
+  </div>
+</div>
+
+<div class="main" id="main"></div>
+<div class="botnav" id="botnav"></div>
+
+<!-- ═══ MODALS ═══════════════════════════════════════════════════════ -->
+
+<!-- Config -->
+<div id="cfgModal" class="mbg" style="display:none">
+<div class="modal">
+  <div class="mtitle">⚙ Configuration</div>
+  <p style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.6">Les clés sont chiffrées <strong>AES-256</strong> avec votre mot de passe maître avant d'être stockées sur Drive.</p>
+  <div style="margin-bottom:14px">
+    <span class="mlbl">Mot de passe maître</span>
+    <input type="password" class="inp" id="masterPwd" placeholder="Mot de passe fort…"/>
+    <div style="font-size:11px;color:var(--t3);margin-top:3px">Non stocké — requis pour chiffrer/déchiffrer les clés.</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+    <div>
+      <span class="mlbl">Clé API Gemini (Google AI Studio)</span>
+      <input type="password" class="inp" id="claudeKeyInp" placeholder="AIzaSy…"/>
+      <div style="font-size:10px;color:var(--t3);margin-top:3px">Gratuit — <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></div>
+    </div>
+    <div>
+      <span class="mlbl">Google OAuth Client ID</span>
+      <input type="text" class="inp" id="clientIdInp" placeholder="xxxx.apps.googleusercontent.com"/>
+      <div style="font-size:10px;color:var(--t3);margin-top:3px">Origin : <code style="background:var(--s1);padding:1px 4px;border-radius:3px">https://jajapho.github.io</code></div>
+    </div>
+  </div>
+  <div id="cfgStatus" style="font-size:12px;min-height:16px;margin-bottom:12px"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn bs fw" onclick="saveCfg()">🔐 Chiffrer & Sauvegarder sur Drive</button>
+    <button class="btn b0" onclick="loadCfg()">↓ Charger depuis Drive</button>
+    <button class="btn bh sm" onclick="closeModal('cfgModal')">Fermer</button>
+  </div>
+  <details style="margin-top:14px"><summary style="font-size:12px;color:var(--t3);cursor:pointer">Guide Client ID Google Drive</summary>
+    <div style="font-size:12px;color:var(--t2);margin-top:8px;line-height:1.7;background:var(--s1);padding:10px;border-radius:var(--r5)">
+      1. <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> → Nouveau projet<br/>
+      2. APIs &amp; Services → Enable → <strong>Google Drive API</strong><br/>
+      3. Credentials → OAuth 2.0 → <strong>Web application</strong><br/>
+      4. Authorized JS origins : <code>https://jajapho.github.io</code><br/>
+      5. Copiez le Client ID ci-dessus
+    </div>
+  </details>
+</div>
+</div>
+
+<!-- Add custom idea -->
+<div id="addIdeaModal" class="mbg" style="display:none">
+<div class="modal">
+  <div class="mtitle">➕ Ajouter une idée personnelle</div>
+  <p style="font-size:13px;color:var(--t2);margin-bottom:16px">Cette idée sera sauvegardée sur Drive et intégrée dans les prochains workflows.</p>
+  <div style="display:grid;gap:12px">
+    <div><span class="mlbl">Titre de l'idée *</span><input type="text" class="inp" id="ni_title" placeholder="Ex: Application de suivi de budget personnel"/></div>
+    <div><span class="mlbl">Catégorie *</span>
+      <select id="ni_cat">
+        <option value="App Mobile">📱 App Mobile</option>
+        <option value="Service">🛠 Service</option>
+        <option value="E-commerce">🛒 E-commerce</option>
+        <option value="Digital">💻 Digital</option>
+        <option value="Tech">⚙️ Tech</option>
+        <option value="Création de contenu">🎬 Création de contenu</option>
+        <option value="Investissement">📈 Investissement</option>
+        <option value="Immobilier">🏠 Immobilier</option>
+        <option value="Commerce">🏪 Commerce</option>
+        <option value="Achat/revente">🔄 Achat/revente</option>
+        <option value="Location">🔑 Location</option>
+        <option value="Business">💼 Business</option>
+      </select>
+    </div>
+    <div><span class="mlbl">Description détaillée *</span><textarea class="inp" id="ni_desc" placeholder="Décrivez l'idée, la niche visée, la proposition de valeur…" style="min-height:90px"></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div><span class="mlbl">Capital requis</span><input type="text" class="inp" id="ni_cap" placeholder="0–1000 €"/></div>
+      <div><span class="mlbl">Effort</span>
+        <select id="ni_effort"><option>faible</option><option selected>moyen</option><option>élevé</option><option>très faible</option></select>
+      </div>
+      <div><span class="mlbl">Potentiel mensuel</span><input type="text" class="inp" id="ni_pot" placeholder="500–3000 €"/></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div><span class="mlbl">Capital min</span>
+        <select id="ni_mcap"><option value="0">0 — &lt;500€</option><option value="1">1 — 500-5k€</option><option value="2">2 — 5-20k€</option><option value="3">3 — +20k€</option></select>
+      </div>
+      <div><span class="mlbl">Temps min</span>
+        <select id="ni_mt"><option value="0">0 — &lt;5h/sem</option><option value="1">1 — 5-15h</option><option value="2">2 — Temps plein</option></select>
+      </div>
+      <div><span class="mlbl">Profil min</span>
+        <select id="ni_mp"><option value="0">0 — Débutant</option><option value="1">1 — Intermédiaire</option><option value="2">2 — Expert</option></select>
+      </div>
+    </div>
+  </div>
+  <div id="addIdeaStatus" style="font-size:12px;min-height:16px;margin-top:10px"></div>
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button class="btn bs fw" onclick="saveCustomIdea()">Ajouter l'idée</button>
+    <button class="btn bh" onclick="closeModal('addIdeaModal')">Annuler</button>
+  </div>
+</div>
+</div>
+
+<!-- Profile questionnaire -->
+<div id="profileModal" class="mbg" style="display:none">
+<div class="modal" style="max-width:560px">
+  <div class="mtitle">👤 Profil détaillé</div>
+  <p style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.6">Ce profil est utilisé par l'Agent B pour évaluer précisément chaque idée selon VOS vraies contraintes et compétences.</p>
+  <div style="display:grid;gap:12px">
+    <div>
+      <span class="mlbl">Compétences clés (séparées par virgules)</span>
+      <input type="text" class="inp" id="pr_skills" placeholder="développement web, marketing digital, photographie…"/>
+    </div>
+    <div>
+      <span class="mlbl">Secteurs d'intérêt</span>
+      <input type="text" class="inp" id="pr_sectors" placeholder="tech, sport, finance, immobilier…"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <span class="mlbl">Situation actuelle</span>
+        <select id="pr_situation">
+          <option value="employe">Salarié — cherche revenus complémentaires</option>
+          <option value="entrepreneur">Déjà entrepreneur / freelance</option>
+          <option value="etudiant">Étudiant</option>
+          <option value="disponible">Disponible à temps plein</option>
+        </select>
+      </div>
+      <div>
+        <span class="mlbl">Appétence au risque</span>
+        <select id="pr_risk">
+          <option value="faible">Faible — sécurité avant tout</option>
+          <option value="moyen" selected>Modérée — risque calculé</option>
+          <option value="eleve">Élevée — go big or go home</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <span class="mlbl">Contraintes importantes</span>
+      <textarea class="inp" id="pr_constraints" placeholder="Famille à charge, pas de déplacement, travail uniquement en ligne, zone géographique limitée…" style="min-height:70px"></textarea>
+    </div>
+    <div>
+      <span class="mlbl">Objectif principal</span>
+      <textarea class="inp" id="pr_goal" placeholder="Ex: Remplacer mon salaire dans 2 ans, générer 2000€/mois passifs d'ici 18 mois…" style="min-height:60px"></textarea>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn bs fw" onclick="saveProfile()">Sauvegarder le profil</button>
+    <button class="btn bh" onclick="closeModal('profileModal')">Fermer</button>
+  </div>
+</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   DRIVE CONFIG
+═══════════════════════════════════════════════════════════════ */
+const DRIVE_DATA_ID   = '1bSypuDu1jLL_9oKiWS563jRlR79W-bZ0';
+const DRIVE_CONFIG_ID = '1ezI54ljxSxI9D2Qws4fVB4u8aEQBpIoz';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+/* ═══════════════════════════════════════════════════════════════
+   SCHEMA VERSION & MIGRATION
+   Rétro-compatibilité garantie — chaque mise à jour du schéma
+   applique une migration non-destructive sur les données existantes
+═══════════════════════════════════════════════════════════════ */
+const SCHEMA_VERSION = 3;
+
+function migrateProject(p) {
+  // v1 → v2 : add journal, plan, customSteps
+  if (!p.journal)     p.journal     = [];
+  if (!p.plan)        p.plan        = null;      // riche plan généré par Agent C
+  if (!p.customSteps) p.customSteps = null;       // override des steps génériques
+  if (!p.agentNotes)  p.agentNotes  = {};         // notes agents A/B/C
+  if (!p.status)      p.status      = 'active';   // active | paused | done | archived
+  // v2 → v3 : add lastActivity, tags
+  if (!p.lastActivity) p.lastActivity = p.createdAt;
+  if (!p.tags)         p.tags         = [];
+  // Ensure steps have all fields
+  p.steps = (p.steps||[]).map(s => ({
+    id: s.id ?? 0,
+    a: s.a || s.title || '',
+    d: s.d || s.duration || '',
+    r: s.r || s.resources || '',
+    done: !!s.done,
+    note: s.note || '',
+  }));
+  p._v = SCHEMA_VERSION;
+  return p;
+}
+
+function migrateData(data) {
+  return {
+    ...data,
+    projects:     (data.projects||[]).map(migrateProject),
+    customIdeas:  data.customIdeas  || [],
+    profile:      data.profile      || null,
+    version:      SCHEMA_VERSION,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+const S = {
+  view: 'workflow',
+  params: { cap:1, temps:1, profil:1, nb:30 },
+  running: false, phase: null, result: null,
+  evalTab: 0, expanded: false,
+  projects: [], customIdeas: [], profile: null,
+  active: null, projTab: 'plan', chatOpen: false, chatLoading: false,
+  claudeKey: '', clientId: '',
+  driveToken: null, driveStatus: 'disconnected', lastSync: null,
+  agentStream: '',
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════════════ */
+const ls = {
+  get:(k,d)=>{ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d} },
+  set:(k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v))}catch{} },
+};
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const uid   = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
+const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fdate = d => new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+const ftime = d => new Date(d).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+const shuffle = a => [...a].sort(()=>Math.random()-.5);
+
+/* ═══════════════════════════════════════════════════════════════
+   PERSISTENCE
+═══════════════════════════════════════════════════════════════ */
+function localSave() {
+  ls.set('aw_v3', { projects:S.projects, customIdeas:S.customIdeas, profile:S.profile, version:SCHEMA_VERSION });
+  ls.set('aw_ts', Date.now());
+}
+function localLoad() {
+  const d = migrateData(ls.get('aw_v3',{}));
+  S.projects    = d.projects;
+  S.customIdeas = d.customIdeas;
+  S.profile     = d.profile;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AES-256 ENCRYPTION
+═══════════════════════════════════════════════════════════════ */
+async function deriveKey(pwd, salt) {
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pwd), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function aesEnc(plain, pwd) {
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(pwd,salt), ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(plain));
+  const buf=new Uint8Array(16+12+ct.byteLength); buf.set(salt); buf.set(iv,16); buf.set(new Uint8Array(ct),28);
+  return btoa(String.fromCharCode(...buf));
+}
+async function aesDec(b64, pwd) {
+  const buf=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  const key=await deriveKey(pwd,buf.slice(0,16));
+  return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:buf.slice(16,28)},key,buf.slice(28)));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONFIG UI
+═══════════════════════════════════════════════════════════════ */
+function openModal(id) {
+  if(id==='cfgModal'){
+    document.getElementById('claudeKeyInp').value = S.claudeKey ? '••••••••' : '';
+    document.getElementById('clientIdInp').value  = S.clientId || ls.get('aw_client_id','');
+  }
+  document.getElementById(id).style.display='flex';
+}
+function closeModal(id){ document.getElementById(id).style.display='none'; }
+function cfgStatus(msg,ok){ const el=document.getElementById('cfgStatus');if(el){el.textContent=msg;el.style.color=ok===true?'var(--gr)':ok===false?'var(--rd)':'var(--t3)'} }
+
+async function saveCfg() {
+  const pwd=document.getElementById('masterPwd').value.trim();
+  const ck=document.getElementById('claudeKeyInp').value.trim();
+  const cid=document.getElementById('clientIdInp').value.trim();
+  if(!pwd){cfgStatus('⚠ Mot de passe maître requis.',false);return}
+  cfgStatus('Chiffrement en cours…');
+  const payload=JSON.stringify({claudeKey:ck&&ck!=='••••••••'?ck:S.claudeKey,clientId:cid});
+  try {
+    const enc=await aesEnc(payload,pwd);
+    const cfg={encrypted:enc,hint:'AES-256-GCM+PBKDF2',v:2};
+    if(ck&&ck!=='••••••••') S.claudeKey=ck;
+    if(cid){S.clientId=cid;ls.set('aw_client_id',cid)}
+    if(S.driveToken){
+      await driveReq(`https://www.googleapis.com/upload/drive/v3/files/${DRIVE_CONFIG_ID}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
+      cfgStatus('✓ Clés chiffrées et sauvegardées sur Drive.',true);
+    } else {
+      ls.set('aw_cfg',JSON.stringify(cfg));
+      cfgStatus('✓ Chiffré en local (connectez Drive pour synchroniser).',true);
+    }
+    updateTopbar();
+  } catch(e){cfgStatus('✗ '+e.message,false)}
+}
+
+async function loadCfg() {
+  const pwd=document.getElementById('masterPwd').value.trim();
+  if(!pwd){cfgStatus('⚠ Entrez votre mot de passe maître.',false);return}
+  cfgStatus('Chargement…');
+  try {
+    let cfg=null;
+    if(S.driveToken){
+      const res=await driveReq(`https://www.googleapis.com/drive/v3/files/${DRIVE_CONFIG_ID}?alt=media`);
+      if(res.ok) cfg=await res.json();
+    }
+    if(!cfg){const l=ls.get('aw_cfg',null);if(l) cfg=typeof l==='string'?JSON.parse(l):l}
+    if(!cfg?.encrypted){cfgStatus('Aucune configuration trouvée.',false);return}
+    const d=JSON.parse(await aesDec(cfg.encrypted,pwd));
+    if(d.claudeKey) S.claudeKey=d.claudeKey;
+    if(d.clientId){S.clientId=d.clientId;ls.set('aw_client_id',d.clientId)}
+    document.getElementById('claudeKeyInp').value=d.claudeKey?'••••••••':'';
+    document.getElementById('clientIdInp').value=d.clientId||'';
+    cfgStatus('✓ Clés chargées avec succès.',true);
+    updateTopbar();
+    if(d.clientId&&!S.driveToken) initGIS(d.clientId);
+  } catch(e){cfgStatus('✗ Mot de passe incorrect.',false)}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROFILE
+═══════════════════════════════════════════════════════════════ */
+function openProfile() {
+  const p=S.profile||{};
+  document.getElementById('pr_skills').value=p.skills||'';
+  document.getElementById('pr_sectors').value=p.sectors||'';
+  document.getElementById('pr_situation').value=p.situation||'employe';
+  document.getElementById('pr_risk').value=p.risk||'moyen';
+  document.getElementById('pr_constraints').value=p.constraints||'';
+  document.getElementById('pr_goal').value=p.goal||'';
+  openModal('profileModal');
+}
+function saveProfile() {
+  S.profile={
+    skills:document.getElementById('pr_skills').value.trim(),
+    sectors:document.getElementById('pr_sectors').value.trim(),
+    situation:document.getElementById('pr_situation').value,
+    risk:document.getElementById('pr_risk').value,
+    constraints:document.getElementById('pr_constraints').value.trim(),
+    goal:document.getElementById('pr_goal').value.trim(),
+    updatedAt:new Date().toISOString(),
+  };
+  scheduleSave(); closeModal('profileModal'); updateTopbar();
+}
+function profileSummary(p) {
+  if(!p) return 'Non configuré';
+  return [p.skills&&`Compétences: ${p.skills}`,p.sectors&&`Secteurs: ${p.sectors}`,p.situation,p.risk&&`Risque: ${p.risk}`,p.constraints&&`Contraintes: ${p.constraints}`,p.goal&&`Objectif: ${p.goal}`].filter(Boolean).join(' | ');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GOOGLE OAUTH
+═══════════════════════════════════════════════════════════════ */
+let tokenClient=null;
+function initGIS(cid) {
+  if(!cid) return;
+  const tok=ls.get('aw_tok',null), exp=ls.get('aw_exp',0);
+  if(tok&&Date.now()<exp){S.driveToken=tok;S.driveStatus='ok';updateSyncDot();driveLoad();}
+  try{tokenClient=window.google?.accounts?.oauth2?.initTokenClient({client_id:cid,scope:SCOPES,callback:onToken});}catch(e){}
+}
+function onToken(resp){
+  if(resp.error){S.driveStatus='error';updateSyncDot();renderSyncBar();return}
+  S.driveToken=resp.access_token;
+  ls.set('aw_tok',resp.access_token);ls.set('aw_exp',Date.now()+(resp.expires_in-60)*1000);
+  S.driveStatus='ok';updateSyncDot();renderSyncBar();driveLoad();
+}
+function connectDrive(){
+  if(!S.clientId){openModal('cfgModal');return}
+  if(!tokenClient){initGIS(S.clientId);setTimeout(connectDrive,700);return}
+  S.driveStatus='connecting';updateSyncDot();renderSyncBar();
+  tokenClient.requestAccessToken({prompt:''});
+}
+function disconnectDrive(){
+  if(S.driveToken) try{google.accounts.oauth2.revoke(S.driveToken,()=>{})}catch{}
+  S.driveToken=null;S.driveStatus='disconnected';ls.set('aw_tok',null);ls.set('aw_exp',0);
+  updateSyncDot();renderSyncBar();
+}
+function cycleSync(){
+  if(S.driveStatus==='disconnected') connectDrive();
+  else if(S.driveStatus==='ok') driveLoad();
+}
+
+function updateSyncDot(){
+  const dot=document.getElementById('syncDot');if(!dot) return;
+  const cols={ok:'var(--gr)',syncing:'var(--am)',connecting:'var(--am)',error:'var(--rd)',disconnected:'var(--bdr2)'};
+  dot.style.background=cols[S.driveStatus]||'var(--bdr2)';
+  dot.style.animation=['syncing','connecting'].includes(S.driveStatus)?'pulse 1.2s infinite':'none';
+  const t={ok:`Drive OK${S.lastSync?' · '+S.lastSync.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):''}`,syncing:'Sauvegarde…',connecting:'Connexion…',error:'Erreur Drive',disconnected:'Drive déconnecté — cliquer pour connecter'};
+  dot.title=t[S.driveStatus]||'';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DRIVE API
+═══════════════════════════════════════════════════════════════ */
+async function driveReq(url,opts={}){
+  if(!S.driveToken) throw new Error('Non connecté à Drive');
+  const res=await fetch(url,{...opts,headers:{Authorization:`Bearer ${S.driveToken}`,...opts.headers}});
+  if(res.status===401){S.driveToken=null;S.driveStatus='disconnected';ls.set('aw_tok',null);updateSyncDot();renderSyncBar();throw new Error('Session expirée')}
+  return res;
+}
+async function driveLoad(){
+  if(!S.driveToken) return;
+  S.driveStatus='syncing';updateSyncDot();renderSyncBar();
+  try{
+    const res=await driveReq(`https://www.googleapis.com/drive/v3/files/${DRIVE_DATA_ID}?alt=media`);
+    if(res.ok){
+      const raw=await res.json();
+      const d=migrateData(raw);
+      const dts=new Date(raw.lastSync||0).getTime(), lts=ls.get('aw_ts',0);
+      if(dts>=lts||S.projects.length===0){
+        S.projects=d.projects;S.customIdeas=d.customIdeas;S.profile=d.profile;localSave();
+        if(S.active) S.active=S.projects.find(p=>p.id===S.active.id)||S.active;
+      }
+    }
+    S.driveStatus='ok';S.lastSync=new Date();
+  }catch(e){S.driveStatus='error'}
+  updateSyncDot();renderSyncBar();updateTopbar();render();
+}
+let _st=null;
+function scheduleSave(){localSave();clearTimeout(_st);_st=setTimeout(driveSave,900)}
+async function driveSave(){
+  localSave();if(!S.driveToken) return;
+  S.driveStatus='syncing';updateSyncDot();renderSyncBar();
+  try{
+    await driveReq(`https://www.googleapis.com/upload/drive/v3/files/${DRIVE_DATA_ID}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({projects:S.projects,customIdeas:S.customIdeas,profile:S.profile,lastSync:new Date().toISOString(),version:SCHEMA_VERSION})});
+    S.driveStatus='ok';S.lastSync=new Date();
+  }catch(e){S.driveStatus='error'}
+  updateSyncDot();renderSyncBar();
+}
+function renderSyncBar(){const el=document.getElementById('syncBar');if(el) el.innerHTML=syncBarHTML()}
+
+/* ═══════════════════════════════════════════════════════════════
+   CLAUDE API
+═══════════════════════════════════════════════════════════════ */
+// Gemini API — gemini-2.0-flash (gratuit, 1500 req/jour)
+async function callClaude(msgs, sys) {
+  if(!S.claudeKey) throw new Error('Clé API Gemini non configurée');
+  // Convert messages format: Claude → Gemini
+  // System prompt is injected as first user turn (Gemini doesn't have system role)
+  const contents = [];
+  if(sys) contents.push({ role:'user', parts:[{text: sys}] }, { role:'model', parts:[{text:'Compris. Je vais suivre ces instructions.'}] });
+  for(const m of msgs) {
+    contents.push({ role: m.role==='assistant'?'model':'user', parts:[{text: m.content}] });
+  }
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${S.claudeKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      contents,
+      generationConfig: { maxOutputTokens:2000, temperature:0.7 },
+      safetySettings: [
+        {category:'HARM_CATEGORY_HARASSMENT',threshold:'BLOCK_NONE'},
+        {category:'HARM_CATEGORY_HATE_SPEECH',threshold:'BLOCK_NONE'},
+        {category:'HARM_CATEGORY_SEXUALLY_EXPLICIT',threshold:'BLOCK_NONE'},
+        {category:'HARM_CATEGORY_DANGEROUS_CONTENT',threshold:'BLOCK_NONE'},
+      ]
+    }),
+  });
+  const d = await res.json();
+  if(d.error) throw new Error(d.error.message);
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IDEA POOL — AIVEST IDEAS always score 10 / validée
+═══════════════════════════════════════════════════════════════ */
+const AIVEST_POOL = [
+  {t:'App mobile niche spécifique (foot, paris sportifs, MMORPG…)',cat:'App Mobile',aivest:true,d:'Application native sur une niche passionnée très précise : stats football temps réel, suivi de paris sportifs, gestion d\'inventaire MMORPG…',cap:'0–3000 €',effort:'élevé',pot:'1000–20000 €',minCap:0,minTemps:2,minProfil:1},
+  {t:'App mobile apprentissage gamifié (musique, langues…)',cat:'App Mobile',aivest:true,d:'Application d\'apprentissage progressif et gamifié — solfège, instrument, langues rares, compétences professionnelles.',cap:'0–2000 €',effort:'élevé',pot:'500–15000 €',minCap:0,minTemps:2,minProfil:1},
+  {t:'App mobile scrolling contenu enrichi (Wikipedia-style)',cat:'App Mobile',aivest:true,d:'Expérience de découverte encyclopédique en scrolling infini — cartes, anecdotes, facts visuels — monétisé par abonnement ou publicité.',cap:'0–1000 €',effort:'élevé',pot:'500–10000 €',minCap:0,minTemps:2,minProfil:1},
+];
+
+const BASE_POOL = [
+  {t:'Micro-tâches Fiverr',cat:'Service',d:'Micro-prestations (logos, traduction, voix-off, montage)',cap:'0 €',effort:'faible',pot:'300–800 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Freelance rédaction SEO',cat:'Service',d:'Articles SEO et contenus pour sites e-commerce et blogs',cap:'0 €',effort:'moyen',pot:'800–2500 €',minCap:0,minTemps:1,minProfil:0},
+  {t:'Freelance design graphique',cat:'Service',d:'Identités visuelles et supports sur Malt ou Upwork',cap:'0 €',effort:'moyen',pot:'1000–3500 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Copywriting / pages de vente',cat:'Service',d:'Pages de vente et séquences email pour e-commerçants',cap:'0 €',effort:'moyen',pot:'2000–6000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Gestion réseaux sociaux (SMM)',cat:'Service',d:'Comptes Instagram/LinkedIn de PME locales en retainer',cap:'0 €',effort:'moyen',pot:'1000–3000 €',minCap:0,minTemps:1,minProfil:0},
+  {t:'Montage vidéo freelance',cat:'Service',d:'Reels, YouTube Shorts et publicités pour créateurs et marques',cap:'0 €',effort:'moyen',pot:'1500–4000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Ghost-writing LinkedIn / X',cat:'Service',d:'Posts viraux pour entrepreneurs souhaitant scaler leur personal brand',cap:'0 €',effort:'moyen',pot:'2000–6000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Coaching business en ligne',cat:'Service',d:'Accompagnement stratégie et exécution (150–400 €/h)',cap:'0 €',effort:'moyen',pot:'2000–8000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Agence SEO locale',cat:'Service',d:'PME locales rankées sur Google, forfaits 500–2000 €/mois',cap:'0 €',effort:'élevé',pot:'3000–10000 €',minCap:0,minTemps:2,minProfil:2},
+  {t:'Agence Meta / Google Ads',cat:'Service',d:'Campagnes pub pour e-commerçants (% des dépenses + fixe)',cap:'0 €',effort:'élevé',pot:'3000–10000 €',minCap:0,minTemps:2,minProfil:2},
+  {t:'Consulting automatisation IA',cat:'Service',d:'Automatiser les process des PME avec Make, Zapier, IA',cap:'0 €',effort:'moyen',pot:'2000–8000 €',minCap:0,minTemps:1,minProfil:2},
+  {t:'Développement web freelance',cat:'Service',d:'Sites WordPress, Webflow ou apps sur mesure pour PME',cap:'0 €',effort:'élevé',pot:'2000–8000 €',minCap:0,minTemps:1,minProfil:2},
+  {t:'Dropshipping Print-on-demand',cat:'E-commerce',d:'Boutique Printful/Printify sans stock — t-shirts, mugs',cap:'0 €',effort:'moyen',pot:'500–2000 €',minCap:0,minTemps:1,minProfil:0},
+  {t:'Dropshipping AliExpress niche',cat:'E-commerce',d:'Shopify + AliExpress sur une niche précise',cap:'0 €',effort:'élevé',pot:'1000–5000 €',minCap:0,minTemps:2,minProfil:0},
+  {t:'Boutique Etsy produits digitaux',cat:'E-commerce',d:'Templates, prints, presets sur Etsy (revenu semi-passif)',cap:'0 €',effort:'moyen',pot:'500–3000 €',minCap:0,minTemps:1,minProfil:0},
+  {t:'Boutique e-commerce niche avec stock',cat:'E-commerce',d:'Stock initial + Shopify + pub ciblée sur niche précise',cap:'500–3000 €',effort:'élevé',pot:'1500–6000 €',minCap:1,minTemps:2,minProfil:0},
+  {t:'Amazon FBA marque blanche',cat:'E-commerce',d:'Produit sourcé en Asie envoyé en entrepôt Amazon',cap:'3000–5000 €',effort:'moyen',pot:'2000–8000 €',minCap:2,minTemps:1,minProfil:1},
+  {t:'Abonnement box produits niche',cat:'E-commerce',d:'Box mensuelle sur niche passionnée (café, cosmétiques, jeux…)',cap:'2000–5000 €',effort:'élevé',pot:'2000–8000 €',minCap:1,minTemps:2,minProfil:1},
+  {t:'Cours en ligne (Udemy / Teachable)',cat:'E-commerce',d:'Formation vidéo vendue en one-shot sur Udemy ou Teachable',cap:'0 €',effort:'élevé',pot:'500–5000 €',minCap:0,minTemps:2,minProfil:1},
+  {t:'Achat/revente sneakers limitées',cat:'Achat/revente',d:'Sneakers édition limitée revendues avec marge',cap:'200–2000 €',effort:'faible',pot:'500–2000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Achat/revente électronique reconditionné',cat:'Achat/revente',d:'iPhones, consoles cassés, réparés et revendus sur eBay',cap:'200–2000 €',effort:'moyen',pot:'800–3000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Achat/revente trading cards',cat:'Achat/revente',d:'Cartes Pokémon, Magic, gradées, revendues à la hausse',cap:'200–2000 €',effort:'faible',pot:'300–2000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Flipping sites web (Flippa)',cat:'Achat/revente',d:'Sites stagnants optimisés et revendus 20–30x MRR',cap:'2000–20000 €',effort:'élevé',pot:'2000–15000 €',minCap:1,minTemps:2,minProfil:2},
+  {t:'Blog de niche + affiliation',cat:'Digital',d:'Blog niche précise, monétisé via Amazon Affiliés + Adsense',cap:'0 €',effort:'élevé',pot:'300–3000 €',minCap:0,minTemps:1,minProfil:0},
+  {t:'Chaîne YouTube monétisée',cat:'Création de contenu',d:'Contenu niche, monétisé via AdSense + sponsors + produits',cap:'0 €',effort:'élevé',pot:'200–8000 €',minCap:0,minTemps:2,minProfil:0},
+  {t:'TikTok / Instagram Reels creator',cat:'Création de contenu',d:'Contenu court viral, monétisé via Creator Fund + partenariats',cap:'0 €',effort:'élevé',pot:'300–5000 €',minCap:0,minTemps:2,minProfil:0},
+  {t:'Newsletter payante (Substack / Beehiiv)',cat:'Digital',d:'Newsletter premium sur thématique pointue, abonnement 5–20 €/mois',cap:'0 €',effort:'moyen',pot:'500–5000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Cours en ligne premium (cohorte live)',cat:'Digital',d:'Formation live 6–8 semaines vendue 300–1500 € par participant',cap:'0 €',effort:'élevé',pot:'3000–15000 €',minCap:0,minTemps:2,minProfil:1},
+  {t:'Membership / communauté payante',cat:'Digital',d:'Communauté Discord ou Circle avec accès premium (10–50 €/mois)',cap:'0 €',effort:'moyen',pot:'500–5000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Micro-SaaS B2B (outil de niche)',cat:'Tech',d:'Petit outil en ligne résolvant un problème précis, abonnement mensuel',cap:'0 €',effort:'élevé',pot:'1000–10000 €',minCap:0,minTemps:2,minProfil:2},
+  {t:'Extension Chrome / plugin VSCode',cat:'Tech',d:'Plugin vendu en one-shot ou abonnement sur les marketplaces',cap:'0 €',effort:'élevé',pot:'500–5000 €',minCap:0,minTemps:2,minProfil:2},
+  {t:'Outil IA no-code (Make + GPT)',cat:'Tech',d:'Mini-outils IA (générateur de contenu, analyse) vendus en SaaS',cap:'0–500 €',effort:'moyen',pot:'500–3000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'ETF World en DCA mensuel',cat:'Investissement',d:'ETF S&P500 ou MSCI World en DCA via Trade Republic / Degiro',cap:'200–5000 €',effort:'très faible',pot:'50–300 € passif',minCap:0,minTemps:0,minProfil:0},
+  {t:'Portefeuille ETF + dividendes',cat:'Investissement',d:'ETF croissance + actions à dividendes élevés',cap:'2000–10000 €',effort:'faible',pot:'100–500 € passif',minCap:1,minTemps:0,minProfil:1},
+  {t:'SCPI pierre-papier',cat:'Investissement',d:'Parts de SCPI, rendement immobilier sans gestion (4–6%/an)',cap:'5000–20000 €',effort:'très faible',pot:'300–1200 € passif',minCap:2,minTemps:0,minProfil:0},
+  {t:'Crowdfunding immobilier',cat:'Investissement',d:'Projets immobiliers via Homunity, Anaxago (8–12%/an)',cap:'1000–10000 €',effort:'faible',pot:'100–1200 € passif',minCap:0,minTemps:0,minProfil:0},
+  {t:'Location courte durée Airbnb',cat:'Immobilier',d:'Sous-louer sa chambre ou gérer un bien pour un tiers',cap:'0–1000 €',effort:'moyen',pot:'500–2500 €',minCap:0,minTemps:1,minProfil:0},
+  {t:'Conciergerie Airbnb',cat:'Immobilier',d:'Gérer les logements Airbnb d\'autres propriétaires (15–25%)',cap:'0 €',effort:'moyen',pot:'1000–4000 €',minCap:0,minTemps:1,minProfil:0},
+  {t:'Distributeurs automatiques',cat:'Commerce',d:'Distributeurs en zones fort trafic (bureaux, gyms)',cap:'2000–8000 €',effort:'faible',pot:'300–1500 € passif',minCap:1,minTemps:0,minProfil:0},
+  {t:'Location voiture (Getaround)',cat:'Location',d:'Louer sa voiture via Getaround ou Ouicar hors utilisation',cap:'0 €',effort:'très faible',pot:'200–600 € passif',minCap:0,minTemps:0,minProfil:0},
+  {t:'Achat site web existant (Flippa)',cat:'Business',d:'Site ou blog avec revenus prouvés racheté et optimisé',cap:'2000–20000 €',effort:'moyen',pot:'500–5000 € passif',minCap:1,minTemps:1,minProfil:1},
+];
+
+const CI={'App Mobile':'📱',Service:'🛠','E-commerce':'🛒','Achat/revente':'🔄',Digital:'💻','Création de contenu':'🎬',Investissement:'📈',Immobilier:'🏠',Tech:'⚙️',Commerce:'🏪',Location:'🔑',Business:'💼'};
+const CC={'App Mobile':'var(--gold)','Service':'var(--bl)','E-commerce':'var(--gr)','Achat/revente':'var(--am)','Digital':'var(--bl)','Création de contenu':'var(--rd)','Investissement':'var(--gr)','Immobilier':'var(--gold)','Tech':'var(--pu)','Commerce':'var(--am)','Location':'var(--gr)','Business':'var(--gold)'};
+const CK={'App Mobile':'cg','Service':'cb','E-commerce':'ce','Achat/revente':'ca','Digital':'cb','Création de contenu':'cr','Investissement':'ce','Immobilier':'cg','Tech':'cp','Commerce':'ca','Location':'ce','Business':'cg'};
+
+/* ═══════════════════════════════════════════════════════════════
+   AGENTS — real Claude calls
+═══════════════════════════════════════════════════════════════ */
+function buildAgentSys_B(profile) {
+  return `Tu es l'Agent B — évaluateur expert en faisabilité business.
+Tu analyses des idées de business en tenant compte du profil RÉEL de l'investisseur.
+
+PROFIL DE L'INVESTISSEUR :
+${profileSummary(profile)}
+
+Pour chaque idée fournie, réponds UNIQUEMENT avec un JSON valide (pas de markdown, pas de backticks) de la forme :
+{
+  "score": <1-10>,
+  "verdict": <"validée"|"à améliorer"|"rejetée">,
+  "force": "<point fort principal adapté AU PROFIL>",
+  "faiblesse": "<risque ou frein principal réel>",
+  "conseil": "<conseil actionnable et précis, adapté au profil>"
+}
+
+Critères d'évaluation :
+- Adéquation compétences ↔ idée (fort poids)
+- Faisabilité avec le capital et le temps disponibles
+- Marché réel et accessibilité
+- Potentiel de revenu vs objectif déclaré
+- Risques réels selon situation (salarié = prudence, entrepreneur = tolérance)
+- Score 8–10 : validée, 5–7 : à améliorer, 1–4 : rejetée
+Sois honnête et précis. Pas de complaisance.`;
+}
+
+function buildAgentSys_C() {
+  return `Tu es l'Agent C — stratège en lancement de business.
+Génère un plan de lancement COMPLET et DÉTAILLÉ pour l'idée fournie.
+
+Réponds UNIQUEMENT avec un JSON valide (pas de markdown, pas de backticks) :
+{
+  "phases": [
+    {
+      "name": "<Phase 1 : Validation>",
+      "duration": "<ex: Semaines 1–2>",
+      "objective": "<objectif de la phase>",
+      "steps": [
+        {
+          "title": "<action précise>",
+          "detail": "<comment faire concrètement>",
+          "tools": "<outils/ressources spécifiques>",
+          "budget": "<coût estimé ou 0>",
+          "kpi": "<comment mesurer le succès>"
+        }
+      ]
+    }
+  ],
+  "totalBudget": "<budget total estimé>",
+  "timeToFirstRevenue": "<délai réaliste avant premier euro>",
+  "keyRisks": ["<risque 1>","<risque 2>","<risque 3>"],
+  "successMetrics": ["<métrique 1>","<métrique 2>","<métrique 3>"],
+  "tools": ["<outil clé 1>","<outil clé 2>"],
+  "quickWins": ["<action immédiate cette semaine>","<action semaine 2>"]
+}
+
+Génère 4–5 phases couvrant : Validation → Setup/MVP → Premier client → Croissance → Optimisation/Scale.
+Chaque phase a 3–5 étapes concrètes. Sois très précis, pas générique.`;
+}
+
+async function runAgentB_real(ideas, profile) {
+  // Real Claude evaluation for each idea
+  const results = [];
+  const sys = buildAgentSys_B(profile);
+  
+  // Batch by groups of 3 to save tokens
+  for(let i=0; i<ideas.length; i+=3) {
+    const batch = ideas.slice(i, i+3);
+    const prompt = `Évalue ces idées de business :\n\n${batch.map((x,j)=>`${j+1}. "${x.t}" (${x.cat}) — Capital: ${x.cap}, Effort: ${x.effort}, Potentiel: ${x.pot}/mois\nDescription: ${x.d}`).join('\n\n')}\n\nRéponds avec un tableau JSON : [${batch.map(()=>'{}').join(',')}]`;
+    
+    try {
+      const raw = await callClaude([{role:'user',content:prompt}], sys);
+      // Parse — find JSON array
+      const match = raw.match(/\[[\s\S]*\]/);
+      if(match) {
+        const parsed = JSON.parse(match[0]);
+        batch.forEach((idea,j) => {
+          const ev = parsed[j]||{};
+          results.push({
+            ...idea,
+            score:    idea.aivest ? 10 : Math.min(10,Math.max(1,parseInt(ev.score)||6)),
+            verdict:  idea.aivest ? 'validée' : (ev.verdict||'à améliorer'),
+            force:    idea.aivest ? 'Idée Aivest — validée et priorisée par le porteur du projet' : (ev.force||'Potentiel identifié'),
+            faiblesse:idea.aivest ? 'Nécessite un vrai go-to-market et un MVP solide' : (ev.faiblesse||'À évaluer'),
+            conseil:  idea.aivest ? 'Commencer par une landing page + waitlist pour valider' : (ev.conseil||'Approfondissez l\'analyse'),
+          });
+        });
+      } else throw new Error('Parse failed');
+    } catch(e) {
+      // Fallback si erreur API
+      batch.forEach(idea => {
+        results.push({...idea, score:idea.aivest?10:6, verdict:idea.aivest?'validée':'à améliorer',
+          force:'Évaluation en attente',faiblesse:'Impossible d\'évaluer (API)',conseil:'Réessayez avec une clé API valide'});
+      });
+    }
+    // Small delay between batches
+    if(i+3 < ideas.length) await sleep(400);
+  }
+  return results;
+}
+
+async function runAgentC_real(idea, profile) {
+  const sys = buildAgentSys_C();
+  const prompt = `Génère le plan de lancement complet pour :
+Titre : "${idea.t}"
+Catégorie : ${idea.cat}
+Description : ${idea.d}
+Capital disponible : ${idea.cap}
+Effort estimé : ${idea.effort}
+Potentiel : ${idea.pot}/mois
+
+Profil investisseur : ${profileSummary(profile)}`;
+
+  try {
+    const raw = await callClaude([{role:'user',content:prompt}], sys);
+    const match = raw.match(/\{[\s\S]*\}/);
+    if(match) return JSON.parse(match[0]);
+    throw new Error('Parse failed');
+  } catch(e) {
+    return null;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WORKFLOW ENGINE
+═══════════════════════════════════════════════════════════════ */
+function filterPool(c,t,p) {
+  const custom = (S.customIdeas||[]).filter(x=>x.minCap<=c&&x.minTemps<=t&&x.minProfil<=p);
+  const aivest = AIVEST_POOL.filter(x=>x.minCap<=c&&x.minTemps<=t&&x.minProfil<=p);
+  const base   = BASE_POOL.filter(x=>x.minCap<=c&&x.minTemps<=t&&x.minProfil<=p);
+  return [...aivest, ...custom, ...base];
+}
+
+async function runWF() {
+  if(!S.claudeKey) { openModal('cfgModal'); return; }
+  S.running=true; S.result=null; S.expanded=false; S.agentStream='';
+  render();
+
+  const {cap,temps,profil,nb} = S.params;
+  // Idées déjà lancées — exclues du workflow
+  const launched = new Set(S.projects.map(p=>p.title));
+
+  const aivest = AIVEST_POOL.filter(x=>x.minCap<=cap&&x.minTemps<=temps&&x.minProfil<=profil&&!launched.has(x.t));
+  const custom  = (S.customIdeas||[]).filter(x=>x.minCap<=cap&&x.minTemps<=temps&&x.minProfil<=profil&&!launched.has(x.t));
+  const rest    = BASE_POOL.filter(x=>x.minCap<=cap&&x.minTemps<=temps&&x.minProfil<=profil&&!launched.has(x.t));
+  const picked  = shuffle(rest).slice(0, Math.max(0, nb - aivest.length - custom.length));
+  const idees   = [...aivest, ...custom, ...picked];
+
+  // Phase A1
+  S.phase='a1'; S.agentStream='🔵 Agent A — Sélection de '+idees.length+' idées…'; render(); await sleep(600);
+
+  // Phase B — real Claude
+  S.phase='b'; S.agentStream='🟡 Agent B — Évaluation par Gemini (peut prendre 20–40s)…'; render();
+  const evals = await runAgentB_real(idees, S.profile);
+
+  // Phase A2 — refine based on B feedback
+  S.phase='a2'; S.agentStream='🔵 Agent A — Affinement sur base des retours…'; render(); await sleep(500);
+  const validees  = evals.filter(e=>e.verdict==='validée').sort((a,b)=>b.score-a.score);
+  const ameliorer = evals.filter(e=>e.verdict==='à améliorer').sort((a,b)=>b.score-a.score);
+  const rejetees  = evals.filter(e=>e.verdict==='rejetée');
+  const best      = [...validees.slice(0,6),...ameliorer.slice(0,3)].sort((a,b)=>b.score-a.score);
+
+  // Phase C — plans
+  S.phase='c'; S.agentStream='🟢 Agent C — Plans disponibles à la demande (cliquez ＋ Lancer)'; render(); await sleep(400);
+
+  S.result = { idees, evals, validees, ameliorer, rejetees, best };
+  S.phase='done'; S.running=false; S.agentStream='';
+  render();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROJECT ACTIONS
+═══════════════════════════════════════════════════════════════ */
+async function launchIdea(json) {
+  const idea = JSON.parse(json);
+  if(S.projects.some(p=>p.title===idea.t)) return;
+
+  // Generate full plan with Agent C
+  const loadEl = document.getElementById('launchStatus');
+  if(loadEl) { loadEl.textContent='⏳ Agent C génère le plan complet…'; loadEl.style.display='block'; }
+
+  let plan = null;
+  try { plan = await runAgentC_real(idea, S.profile); } catch(e) {}
+
+  const defaultSteps = getDefaultSteps(idea.cat);
+  const proj = migrateProject({
+    id:uid(), title:idea.t, cat:idea.cat, idea,
+    steps: defaultSteps.map((s,i)=>({...s,done:false,id:i,note:''})),
+    plan,
+    chat:[], journal:[], createdAt:new Date().toISOString(), lastActivity:new Date().toISOString(),
+  });
+
+  S.projects=[proj,...S.projects];
+  scheduleSave();
+  S.active=proj; S.view='project'; S.projTab='plan'; S.chatOpen=false;
+  render();
+}
+
+function getDefaultSteps(cat) {
+  const ST = {
+    'App Mobile':[{a:"Valider l'idée avec 20 interviews",d:"Sem. 1–2",r:"Typeform, LinkedIn"},{a:"Créer les maquettes Figma",d:"Sem. 2–3",r:"Figma gratuit"},{a:"Développer l'MVP",d:"Mois 1–3",r:"FlutterFlow, React Native"},{a:"Beta TestFlight / Play Console",d:"Mois 3",r:"100 testeurs"},{a:"Publier et activer la monétisation",d:"Mois 4+",r:"RevenueCat, Stripe"}],
+    Service:[{a:"Définir l'offre et la cible",d:"Sem. 1",r:"Étude concurrents"},{a:"Créer profil Malt/Upwork/Fiverr",d:"Sem. 1–2",r:"Portfolio 3 exemples"},{a:"Contacter 20 prospects",d:"Sem. 2–3",r:"LinkedIn, email"},{a:"Premières missions + avis",d:"Mois 1–2",r:"Outils métier"},{a:"Monter les tarifs et automatiser",d:"Mois 3+",r:"CRM, templates"}],
+    'E-commerce':[{a:"Valider la niche",d:"Sem. 1",r:"Google Trends, AliExpress"},{a:"Créer la boutique Shopify",d:"Sem. 2",r:"Shopify 1€/3 mois"},{a:"Campagne pub test 50–100€",d:"Sem. 3",r:"Meta Ads"},{a:"Analyser et optimiser",d:"Sem. 4",r:"Ads Manager"},{a:"Scaler les gagnants",d:"Mois 2–3",r:"Réinvestir les bénéfices"}],
+    'Achat/revente':[{a:"Identifier les produits > 2x",d:"Sem. 1",r:"LeBonCoin, Vinted, eBay"},{a:"Lot test 100–300€",d:"Sem. 2",r:"Capital test"},{a:"Photographier et rédiger",d:"Sem. 2–3",r:"Smartphone"},{a:"Premières ventes",d:"Sem. 3–4",r:"Colissimo, Mondial Relay"},{a:"Réinvestir 100%",d:"Mois 2–3",r:"Réserve trésorerie"}],
+    Digital:[{a:"Valider la niche (mots-clés)",d:"Sem. 1",r:"Ahrefs gratuit"},{a:"Créer la structure du contenu",d:"Sem. 2–3",r:"Notion, Google Docs"},{a:"10 premiers contenus",d:"Sem. 3–6",r:"Teachable, Gumroad"},{a:"Promouvoir",d:"Mois 2",r:"LinkedIn, Reddit"},{a:"Monétiser",d:"Mois 3+",r:"Affiliation, formation"}],
+    'Création de contenu':[{a:"Choisir niche et format",d:"Sem. 1",r:"Google Trends"},{a:"30 contenus réguliers",d:"Mois 1",r:"Smartphone, CapCut"},{a:"Analyser les métriques",d:"Mois 2",r:"Analytics natif"},{a:"Premières monétisations",d:"Mois 3–4",r:"Programme partenaires"},{a:"2e plateforme + email",d:"Mois 4+",r:"ConvertKit"}],
+    Investissement:[{a:"Ouvrir PEA/CTO",d:"J. 1–3",r:"Trade Republic, Degiro"},{a:"Définir allocation cible",d:"Sem. 1",r:"Justetf.com"},{a:"Investir première tranche",d:"Sem. 1",r:"Capital disponible"},{a:"DCA mensuel automatique",d:"Sem. 2",r:"Virement permanent"},{a:"Rééquilibrage tous les 6 mois",d:"Récurrent",r:"App Snowball"}],
+    Immobilier:[{a:"Calculer capacité emprunt",d:"Sem. 1–2",r:"Courtier, simulateur"},{a:"Analyser 10–15 biens",d:"Sem. 2–4",r:"Tableur rendement"},{a:"Offre et compromis",d:"Mois 2",r:"Notaire"},{a:"Travaux + locataire",d:"Mois 3–4",r:"Artisans"},{a:"Gestion locative",d:"Mois 4+",r:"Agence gérance"}],
+    Tech:[{a:"Identifier problème non résolu",d:"Sem. 1–2",r:"Reddit, Indie Hackers"},{a:"MVP avec 10 utilisateurs",d:"Sem. 3–6",r:"Bubble, Webflow"},{a:"Launch ProductHunt/Reddit",d:"Sem. 7–8",r:"Landing page"},{a:"Itérer selon retours",d:"Mois 2–3",r:"PostHog"},{a:"Monétisation Stripe",d:"Mois 3+",r:"Stripe, Lemon Squeezy"}],
+    Commerce:[{a:"Analyser le marché local",d:"Sem. 1",r:"Google Maps"},{a:"Contacter fournisseurs",d:"Sem. 2–3",r:"200–500€ échantillons"},{a:"Stock test",d:"Sem. 4–5",r:"Capital initial"},{a:"Lancer ventes",d:"Mois 2",r:"Boutique en ligne"},{a:"Optimiser marges",d:"Mois 3+",r:"Réinvestissement"}],
+    Location:[{a:"Calculer rendement",d:"Sem. 1",r:"Getaround, Yescapa"},{a:"Préparer l'actif",d:"Sem. 1–2",r:"Assureur"},{a:"Publier annonce",d:"Sem. 2",r:"2–3 plateformes"},{a:"Gérer premières réservations",d:"Sem. 3–4",r:"App mobile"},{a:"Ajuster pricing",d:"Mois 2+",r:"PriceLabs"}],
+    Business:[{a:"Évaluer opportunités",d:"Sem. 1–2",r:"Flippa, Empire Flippers"},{a:"Due diligence",d:"Sem. 3–4",r:"Expert comptable"},{a:"Négocier et acquérir",d:"Mois 2",r:"Avocat"},{a:"Quick wins",d:"Mois 2–3",r:"Freelances"},{a:"Optimiser monétisation",d:"Mois 3+",r:"SEO, ads"}],
+  };
+  return ST[cat]||ST['Service'];
+}
+
+function openProj(id) {
+  S.active=S.projects.find(p=>p.id===id)||null;
+  S.view='project'; S.projTab='plan'; S.chatOpen=false;
+  render();
+}
+
+async function toggleStep(projId,stepId) {
+  S.projects=S.projects.map(p=>p.id===projId?{...p,steps:p.steps.map(s=>s.id==stepId?{...s,done:!s.done}:s),lastActivity:new Date().toISOString()}:p);
+  if(S.active?.id===projId) S.active=S.projects.find(p=>p.id===projId);
+  scheduleSave();
+  const el=document.getElementById('projContent');if(el){el.innerHTML=projContentHTML();bindAll();scrollChat()}
+}
+
+async function delProj(id) {
+  S.projects=S.projects.filter(p=>p.id!==id);scheduleSave();
+  if(S.active?.id===id){S.active=null;S.view='saved'}render();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   JOURNAL
+═══════════════════════════════════════════════════════════════ */
+function addJournalEntry() {
+  const text=document.getElementById('jtext')?.value.trim();
+  const tag=document.getElementById('jtag_sel')?.value||'note';
+  if(!text||!S.active) return;
+  const entry={id:uid(),text,tag,createdAt:new Date().toISOString()};
+  S.active={...S.active, journal:[entry,...(S.active.journal||[])], lastActivity:new Date().toISOString()};
+  S.projects=S.projects.map(p=>p.id===S.active.id?S.active:p);
+  scheduleSave();
+  const el=document.getElementById('projContent');if(el){el.innerHTML=projContentHTML();bindAll()}
+}
+
+function delJournalEntry(eid) {
+  if(!S.active) return;
+  S.active={...S.active,journal:(S.active.journal||[]).filter(e=>e.id!==eid)};
+  S.projects=S.projects.map(p=>p.id===S.active.id?S.active:p);
+  scheduleSave();
+  const el=document.getElementById('projContent');if(el){el.innerHTML=projContentHTML();bindAll()}
+}
+
+async function generateWeeklyReview() {
+  if(!S.active||!S.claudeKey) return;
+  const btn=document.getElementById('reviewBtn');if(btn){btn.disabled=true;btn.textContent='⏳ Génération…'}
+  const journal=(S.active.journal||[]).slice(0,20).map(e=>`[${ftime(e.createdAt)}] [${e.tag}] ${e.text}`).join('\n');
+  const steps=S.active.steps.map((s,i)=>`${i+1}. ${s.a} — ${s.done?'✓ Fait':'En attente'}`).join('\n');
+  const sys=`Tu es un conseiller business expert. Génère une revue hebdomadaire concise et actionnable (max 250 mots) basée sur le journal et l'avancement du projet. Identifie les points clés, les blocages, et propose 3 actions prioritaires pour la semaine suivante.`;
+  const prompt=`Projet : "${S.active.title}" (${S.active.cat})\n\nJournal récent :\n${journal||'(aucune entrée)'}\n\nAvancement des étapes :\n${steps}`;
+  try {
+    const review=await callClaude([{role:'user',content:prompt}],sys);
+    const entry={id:uid(),text:review,tag:'revue',createdAt:new Date().toISOString(),isReview:true};
+    S.active={...S.active,journal:[entry,...(S.active.journal||[])]};
+    S.projects=S.projects.map(p=>p.id===S.active.id?S.active:p);
+    scheduleSave();
+  } catch(e){alert('Erreur : '+e.message)}
+  if(btn){btn.disabled=false;btn.textContent='✦ Générer revue hebdo'}
+  const el=document.getElementById('projContent');if(el){el.innerHTML=projContentHTML();bindAll()}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CHAT (contextual)
+═══════════════════════════════════════════════════════════════ */
+async function sendChat(quickQ) {
+  const input=(quickQ||(document.getElementById('chatInput')?.value||'')).trim();
+  if(!input||S.chatLoading||!S.active) return;
+  const p=S.active;
+  const nch=[...(p.chat||[]),{role:'user',content:input}];
+  S.projects=S.projects.map(pr=>pr.id===p.id?{...pr,chat:nch}:pr);
+  S.active={...p,chat:nch}; S.chatLoading=true;
+  const el=document.getElementById('projContent');if(el){el.innerHTML=projContentHTML();bindAll()}scrollChat();
+
+  const planSummary = p.plan ? `Plan de lancement : ${p.plan.phases?.map(ph=>ph.name).join(' → ')||'généré'} | Budget : ${p.plan.totalBudget||'?'} | Délai premier revenu : ${p.plan.timeToFirstRevenue||'?'}` : '';
+  const sys=`Tu es un conseiller business expert, direct et ultra-concis.
+Projet : "${p.title}" (${p.cat}) — ${p.idea?.d}
+Capital : ${p.idea?.cap} | Potentiel : ${p.idea?.pot}/mois | Effort : ${p.idea?.effort}
+${planSummary}
+Étapes : ${p.steps?.map((s,i)=>`${i+1}. ${s.a} (${s.done?'✓':'→'})`).join(' | ')}
+Journal récent : ${(p.journal||[]).slice(0,5).map(e=>`[${e.tag}] ${e.text.slice(0,80)}`).join(' | ')||'vide'}
+Profil investisseur : ${profileSummary(S.profile)}
+Réponds en max 150 mots. Ultra-concret, pas de blabla.`;
+
+  try {
+    const reply=await callClaude(nch,sys);
+    if(reply){
+      const fch=[...nch,{role:'assistant',content:reply}];
+      S.projects=S.projects.map(pr=>pr.id===p.id?{...pr,chat:fch,lastActivity:new Date().toISOString()}:pr);
+      S.active={...S.active,chat:fch};scheduleSave();
+    }
+  } catch(e){
+    const ech=[...nch,{role:'assistant',content:'❌ '+e.message}];
+    S.projects=S.projects.map(pr=>pr.id===p.id?{...pr,chat:ech}:pr);
+    S.active={...S.active,chat:ech};localSave();
+  }
+  S.chatLoading=false;
+  const el2=document.getElementById('projContent');if(el2){el2.innerHTML=projContentHTML();bindAll()}scrollChat();
+}
+
+function scrollChat(){setTimeout(()=>{const el=document.getElementById('chatMsgs');if(el)el.scrollTop=el.scrollHeight},60)}
+
+/* ═══════════════════════════════════════════════════════════════
+   CUSTOM IDEAS
+═══════════════════════════════════════════════════════════════ */
+function saveCustomIdea() {
+  const title=document.getElementById('ni_title').value.trim();
+  const desc=document.getElementById('ni_desc').value.trim();
+  if(!title||!desc){document.getElementById('addIdeaStatus').textContent='⚠ Titre et description requis.';return}
+  const idea={
+    t:title, cat:document.getElementById('ni_cat').value,
+    d:desc, custom:true,
+    cap:document.getElementById('ni_cap').value||'Variable',
+    effort:document.getElementById('ni_effort').value,
+    pot:document.getElementById('ni_pot').value||'Variable',
+    minCap:+document.getElementById('ni_mcap').value,
+    minTemps:+document.getElementById('ni_mt').value,
+    minProfil:+document.getElementById('ni_mp').value,
+    createdAt:new Date().toISOString(),
+  };
+  S.customIdeas=[idea,...(S.customIdeas||[])];
+  scheduleSave();
+  document.getElementById('addIdeaStatus').textContent='✓ Idée ajoutée ! Elle sera incluse dans les prochains workflows.';
+  ['ni_title','ni_desc','ni_cap','ni_pot'].forEach(id=>{document.getElementById(id).value=''});
+  updateTopbar();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SVG HELPERS
+═══════════════════════════════════════════════════════════════ */
+function scoreRing(s){
+  const col=s>=8?'var(--gr)':s>=5?'var(--am)':'var(--rd)';
+  const r=10,c=2*Math.PI*r,d=c*(s/10);
+  return `<svg width="32" height="32" viewBox="0 0 32 32" style="flex-shrink:0"><circle cx="16" cy="16" r="${r}" fill="none" stroke="var(--s2)" stroke-width="2.5"/><circle cx="16" cy="16" r="${r}" fill="none" stroke="${col}" stroke-width="2.5" stroke-dasharray="${d} ${c}" stroke-linecap="round" transform="rotate(-90 16 16)"/><text x="16" y="20" text-anchor="middle" font-size="9" font-weight="600" fill="${col}" font-family="Inter,sans-serif">${s}</text></svg>`;
+}
+function donutSvg(pct,col,sz=54,sw=5){
+  const r=(sz-sw)/2,c=2*Math.PI*r,d=c*(pct/100);
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}"><circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="var(--s2)" stroke-width="${sw}"/><circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-dasharray="${d} ${c}" stroke-linecap="round" transform="rotate(-90 ${sz/2} ${sz/2})"/><text x="${sz/2}" y="${sz/2+4}" text-anchor="middle" font-size="11" font-weight="600" fill="${col}" font-family="Inter,sans-serif">${pct}%</text></svg>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SYNC BAR HTML
+═══════════════════════════════════════════════════════════════ */
+function syncBarHTML(){
+  const{driveStatus:ds,lastSync:ls2,clientId:cid}=S;
+  const time=ls2?ls2.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
+  if(!cid) return `<div class="sbar sboff"><span class="sdot"></span><span style="flex:1">Drive non configuré — données en local</span><button class="btn b0 sm" onclick="openModal('cfgModal')">⚙ Configurer</button></div>`;
+  const m={disconnected:['sboff',false,'Drive non connecté',`<button class="btn bg sm" onclick="connectDrive()">Connecter</button>`],connecting:['sbwarn',true,'Connexion…',''],ok:['sbok',false,`Drive OK${time?' · '+time:''}`,`<button class="btn bh sm" onclick="driveLoad()">↻</button><button class="btn bh sm" onclick="disconnectDrive()">Déconnecter</button>`],syncing:['sbwarn',true,'Sauvegarde…',''],error:['sberr',false,'Erreur Drive',`<button class="btn bg sm" onclick="connectDrive()">Reconnecter</button>`]};
+  const[cls,pulse,lbl,btns]=m[ds]||m.disconnected;
+  return `<div class="sbar ${cls}"><span class="sdot${pulse?' p':''}"></span><span style="flex:1;font-weight:500">${lbl}</span><div style="display:flex;gap:6px">${btns}</div></div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IDEA CARD HTML
+═══════════════════════════════════════════════════════════════ */
+function icardHTML(idea,ev,idx){
+  const col=CC[idea.cat]||'var(--bl)',ck=CK[idea.cat]||'cb';
+  const vck=ev?.verdict==='validée'?'ce':ev?.verdict==='rejetée'?'cr':'ca';
+  const saved=S.projects.some(p=>p.title===idea.t);
+  const isAv=idea.aivest, isCu=idea.custom;
+  return `<div class="icard afu${isAv?' av':''}" style="border-left-color:${col};animation-delay:${(idx||0)*38}ms">
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:clamp(15px,2.5vw,18px);flex-shrink:0;margin-top:2px">${CI[idea.cat]||'💡'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+          <span style="font-weight:600;font-size:clamp(12px,1.5vw,13px);line-height:1.35">${esc(idea.t)}</span>
+          ${isAv?'<span class="chip xs cg" style="font-weight:700">✦ Aivest</span>':''}
+          ${isCu?'<span class="chip xs cb">✎ Personnel</span>':''}
+          <span class="chip xs ${ck}">${esc(idea.cat)}</span>
+          ${ev?`<span class="chip xs ${vck}">${esc(ev.verdict)}</span>`:''}
+        </div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:5px;line-height:1.55">${esc(idea.d)}</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--t3)">💰 ${esc(idea.cap)}</span>
+          <span style="font-size:11px;color:var(--t3)">⚡ ${esc(idea.effort)}</span>
+          <span style="font-size:11px;color:var(--gr);font-weight:600">📊 ${esc(idea.pot)}/mois</span>
+        </div>
+        ${ev?`<div class="sblock"><div>${scoreRing(ev.score)}</div><div style="flex:1;font-size:11px;line-height:1.55"><div style="color:var(--gr);margin-bottom:2px">✓ ${esc(ev.force)}</div><div style="color:var(--rd);margin-bottom:2px">✗ ${esc(ev.faiblesse)}</div><div style="color:var(--gold-dk)">→ ${esc(ev.conseil)}</div></div></div>`:''}
+      </div>
+      <div>
+        <button class="btn ${saved?'bh':'be'} sm" ${saved?'disabled':''} data-launch='${esc(JSON.stringify(idea))}'>
+          ${saved?'✓ Lancé':'＋ Lancer'}
+        </button>
+        <div id="launchStatus" style="font-size:10px;color:var(--am);margin-top:3px;display:none"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROJECT CONTENT HTML (tabs: plan / journal / chat)
+═══════════════════════════════════════════════════════════════ */
+function projContentHTML(){
+  const p=S.active; if(!p) return '';
+  const tab=S.projTab;
+
+  const tabBar=`<div class="ptabs">
+    ${[['plan','📋 Plan'],['journal','📓 Journal'],['chat','✦ Conseiller']].map(([id,lbl])=>`<button class="ptab${tab===id?' on':''}" onclick="S.projTab='${id}';const el=document.getElementById('projContent');if(el){el.innerHTML=projContentHTML();bindAll();scrollChat()}">${lbl}${id==='journal'&&(p.journal||[]).length?` <span class="chip xs cn">${(p.journal||[]).length}</span>`:''}</button>`).join('')}
+  </div>`;
+
+  if(tab==='plan') return tabBar+planTabHTML(p);
+  if(tab==='journal') return tabBar+journalTabHTML(p);
+  if(tab==='chat') return tabBar+chatTabHTML(p);
+  return tabBar;
+}
+
+function planTabHTML(p) {
+  const done=p.steps.filter(s=>s.done).length, pct=Math.round(done/p.steps.length*100);
+  const col=CC[p.cat]||'var(--bl)';
+
+  // Rich plan from Agent C
+  const planBlock = p.plan ? `
+  <div class="card" style="margin-bottom:var(--gap)">
+    <div class="lbl" style="margin-bottom:12px">Plan de lancement complet — Agent C</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:12px">
+      ${p.plan.totalBudget?`<span class="chip cn">💰 Budget : ${esc(p.plan.totalBudget)}</span>`:''}
+      ${p.plan.timeToFirstRevenue?`<span class="chip ce">⏱ Premier revenu : ${esc(p.plan.timeToFirstRevenue)}</span>`:''}
+    </div>
+    ${(p.plan.quickWins||[]).length?`<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--gold-dk);margin-bottom:6px">⚡ Quick wins immédiats</div>${(p.plan.quickWins||[]).map(q=>`<div style="font-size:12px;color:var(--t1);padding:4px 0;border-bottom:1px solid var(--s2)">→ ${esc(q)}</div>`).join('')}</div>`:''}
+    ${(p.plan.phases||[]).map((ph,pi)=>`
+      <div style="margin-bottom:14px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:2px;color:${col}">${esc(ph.name)}</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:8px">${esc(ph.duration||'')} ${ph.objective?'— '+esc(ph.objective):''}</div>
+        ${(ph.steps||[]).map(s=>`<div style="background:var(--s1);border-radius:var(--r5);padding:8px 10px;margin-bottom:6px;border:1px solid var(--bdr)">
+          <div style="font-weight:500;font-size:12px;margin-bottom:3px">${esc(s.title||s.a||'')}</div>
+          ${s.detail?`<div style="font-size:11px;color:var(--t2);margin-bottom:3px;line-height:1.5">${esc(s.detail)}</div>`:''}
+          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--t3)">
+            ${s.tools?`<span>🔧 ${esc(s.tools)}</span>`:''}
+            ${s.budget&&s.budget!=='0'?`<span>💰 ${esc(s.budget)}</span>`:''}
+            ${s.kpi?`<span>📊 ${esc(s.kpi)}</span>`:''}
+          </div>
+        </div>`).join('')}
+      </div>`).join('')}
+    ${(p.plan.keyRisks||[]).length?`<div style="background:var(--rd-bg);border:1px solid var(--rd-bd);border-radius:var(--r5);padding:10px;margin-top:8px"><div style="font-size:11px;font-weight:600;color:var(--rd);margin-bottom:5px">⚠ Risques clés</div>${(p.plan.keyRisks||[]).map(r=>`<div style="font-size:12px;color:var(--t1);margin-bottom:2px">• ${esc(r)}</div>`).join('')}</div>`:''}
+    ${(p.plan.successMetrics||[]).length?`<div style="background:var(--gr-bg);border:1px solid var(--gr-bd);border-radius:var(--r5);padding:10px;margin-top:8px"><div style="font-size:11px;font-weight:600;color:var(--gr);margin-bottom:5px">✓ Métriques de succès</div>${(p.plan.successMetrics||[]).map(m=>`<div style="font-size:12px;color:var(--t1);margin-bottom:2px">• ${esc(m)}</div>`).join('')}</div>`:''}
+  </div>` : `<div class="alert alert-info" style="margin-bottom:var(--gap)">Plan détaillé non disponible — lancez le workflow et utilisez "＋ Lancer" pour générer un plan complet avec l'Agent C.</div>`;
+
+  return `${planBlock}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="lbl">Checklist de progression</div>
+      <span style="font-size:12px;font-weight:600;color:${pct===100?'var(--gr)':'var(--t2)'}">${done}/${p.steps.length} · ${pct}%</span>
+    </div>
+    <div class="prog" style="margin-bottom:14px"><div class="progf" style="width:${pct}%;background:${pct===100?'var(--gr)':col}"></div></div>
+    ${p.steps.map((s,i)=>`<div class="srow" style="opacity:${s.done?.6:1}" onclick="toggleStep('${p.id}',${s.id})">
+      <div class="schk${s.done?' done':''}">${s.done?'✓':''}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500;color:${s.done?'var(--t3)':'var(--t1)'};text-decoration:${s.done?'line-through':'none'};margin-bottom:2px">${esc(s.a)}</div>
+        <div style="font-size:11px;color:var(--t3)">⏱ ${esc(s.d)} · 🔧 ${esc(s.r)}</div>
+      </div>
+      <div class="snum">${i+1}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function journalTabHTML(p) {
+  const entries=p.journal||[];
+  const TAGS=['décision','apprentissage','contact','blocage','idée','revue'];
+  const tagColors={'décision':'jtag-decision','apprentissage':'jtag-apprentissage','contact':'jtag-contact','blocage':'jtag-blocage','idée':'jtag-idee','revue':'jtag-revue'};
+
+  return `
+  <div class="card" style="margin-bottom:var(--gap)">
+    <div class="lbl" style="margin-bottom:10px">Nouvelle entrée</div>
+    <textarea class="inp" id="jtext" placeholder="Note, décision, apprentissage, contact, blocage, idée…" style="margin-bottom:8px;min-height:80px"></textarea>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="jtag_sel" style="width:auto;flex-shrink:0">
+        ${TAGS.map(t=>`<option value="${t}">${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}
+      </select>
+      <button class="btn bs sm" onclick="addJournalEntry()">Ajouter</button>
+      <button class="btn b0 sm" id="reviewBtn" onclick="generateWeeklyReview()">✦ Générer revue hebdo</button>
+    </div>
+  </div>
+
+  ${entries.length===0?`<div class="empty">Aucune entrée de journal<br/><span style="font-size:12px">Notez vos décisions, apprentissages et blocages</span></div>`:''}
+  ${entries.map(e=>`
+    <div class="jentry${e.isReview?' card gold':''} afu">
+      <div class="jentry-hdr">
+        <span class="jtag ${tagColors[e.tag]||'jtag-revue'}">${esc(e.tag)}</span>
+        <span style="font-size:10px;color:var(--t3)">${ftime(e.createdAt)}</span>
+        <button onclick="delJournalEntry('${e.id}')" style="margin-left:auto;background:none;border:none;color:var(--t4);cursor:pointer;font-size:12px;padding:0 2px">✕</button>
+      </div>
+      <div style="font-size:13px;line-height:1.6;white-space:pre-wrap">${esc(e.text)}</div>
+    </div>`).join('')}`;
+}
+
+function chatTabHTML(p) {
+  const QUICK=['Comment trouver mes 3 premiers clients ?','Quel budget exact prévoir ?','Quels outils utiliser au lancement ?','Quel est le plus grand risque ?','Quelle stratégie marketing pour cette niche ?','Qu\'est-ce que je peux faire cette semaine ?'];
+  const chatMsgs=(p.chat||[]).map(m=>`<div style="margin-bottom:8px;display:flex;justify-content:${m.role==='user'?'flex-end':'flex-start'}">
+    ${m.role==='assistant'?'<div class="cav">✦</div>':''}
+    <div class="cbub ${m.role==='user'?'u':'a'}">${esc(m.content).replace(/\n/g,'<br/>')}</div>
+  </div>`).join('');
+
+  return `
+  ${!(p.chat||[]).length?`<div style="margin-bottom:12px"><div class="lbl" style="margin-bottom:7px">Questions rapides</div><div style="display:flex;flex-wrap:wrap;gap:6px">${QUICK.map(q=>`<button class="qqbtn" onclick="sendChat(${JSON.stringify(q)})">${esc(q)}</button>`).join('')}</div></div>`:''}
+  <div class="cmsgs" id="chatMsgs">${chatMsgs}
+    ${S.chatLoading?`<div style="display:flex;gap:6px;padding:7px 0;align-items:center"><div class="cav">✦</div>${[0,1,2].map(i=>`<div style="width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulse .9s ${i*.18}s infinite;display:inline-block"></div>`).join('')}</div>`:''}
+  </div>
+  ${!S.claudeKey?`<div style="text-align:center;padding:10px 0"><button class="btn bg sm" onclick="openModal('cfgModal')">🔑 Configurer la clé API Gemini</button></div>`:`<div style="display:flex;gap:8px"><input type="text" class="inp" id="chatInput" placeholder="Votre question sur ce projet…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"/><button class="btn bg" onclick="sendChat()" ${S.chatLoading?'disabled':''}  style="flex-shrink:0">→</button></div><div style="font-size:10px;color:var(--t3);margin-top:5px">Historique sauvegardé ${S.driveStatus==='ok'?'sur Drive':'en local'}</div>`}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VIEWS
+═══════════════════════════════════════════════════════════════ */
+function viewWorkflow(){
+  const{params:pa,running:ru,phase:ph,result:re,expanded:ex,evalTab:et,agentStream:as}=S;
+  const PH=[{id:'a1',l:'Agent A — Sélection des idées',c:'var(--bl)'},{id:'b',l:'Agent B — Évaluation Gemini (IA réelle)',c:'var(--am)'},{id:'a2',l:'Agent A — Affinement',c:'var(--bl)'},{id:'c',l:'Agent C — Plans disponibles à la demande',c:'var(--gr)'}];
+  const PI=PH.map(p=>p.id), cur=PI.indexOf(ph);
+
+  const hasProfile=!!S.profile?.skills;
+  const profileAlert=!hasProfile?`<div class="alert alert-warn">⚠ Profil non configuré — l'Agent B évaluera avec des critères génériques. <button class="btn b0 sm" onclick="openProfile()">Configurer mon profil</button></div>`:`<div class="alert alert-ok">✓ Profil configuré — évaluation précise par Gemini. <button class="btn bh sm" onclick="openProfile()">Modifier</button></div>`;
+
+  const customCount=S.customIdeas?.length||0;
+
+  const sidebar=`<div class="wfside">
+    <div class="card" style="margin-bottom:var(--gap)">
+      <div class="lbl" style="margin-bottom:12px">Paramètres</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        ${[{l:'Capital',k:'cap',o:[['< 500 €',0],['500–5k €',1],['5–20k €',2],['+20k €',3]]},{l:'Temps/sem',k:'temps',o:[['< 5h',0],['5–15h',1],['Temps plein',2]]},{l:'Profil',k:'profil',o:[['Débutant',0],['Intermédiaire',1],['Expert',2]]}].map(({l,k,o})=>`<div><div class="lbl" style="margin-bottom:4px">${l}</div><select onchange="S.params.${k}=+this.value">${o.map(([lb,v])=>`<option value="${v}"${pa[k]===v?' selected':''}>${lb}</option>`).join('')}</select></div>`).join('')}
+        <div><div class="lbl" style="margin-bottom:4px">Idées à générer</div><select onchange="S.params.nb=+this.value">${[[10,'10'],[20,'20'],[30,'30'],[50,'50'],[999,'Toutes']].map(([v,l])=>`<option value="${v}"${pa.nb===v?' selected':''}>${l}</option>`).join('')}</select></div>
+      </div>
+
+      <div style="background:var(--gold-bg);border:1px solid var(--gold-bd);border-radius:var(--r5);padding:10px;margin-bottom:12px;font-size:12px;line-height:1.6">
+        <strong style="color:var(--gold-dk)">✦ Aivest (${AIVEST_POOL.length})</strong> · <span style="color:var(--t2)">Toujours incluses, toujours score 10</span>
+        ${customCount?`<br/><strong style="color:var(--bl)">✎ Perso (${customCount})</strong> · incluses si profil compatible`:''}
+      </div>
+
+      ${!S.claudeKey?`<div class="alert alert-warn" style="margin-bottom:12px;font-size:11px">⚠ Clé API Gemini requise pour les agents IA. <button class="btn bg sm" onclick="openModal('cfgModal')">Configurer</button></div>`:''}
+
+      <button class="btn bs fw lg" ${ru||!S.claudeKey?'disabled':''} onclick="runWF()">
+        ${ru?`<span class="spin">⟳</span> Agents en cours…`:re?'↺ Relancer':'▶ Lancer le workflow'}
+      </button>
+      <button class="btn bh fw sm" style="margin-top:8px" onclick="openModal('addIdeaModal')">＋ Ajouter une idée personnelle</button>
+    </div>
+
+    ${ru?`<div class="card afi">
+      <div class="lbl" style="margin-bottom:10px">Agents en cours</div>
+      ${PH.map((p,i)=>`<div class="phrow" style="opacity:${ph===p.id?1:i<cur?.8:.3}"><div class="phdot" style="background:${p.c};${ph===p.id?'animation:pulse 1.1s infinite;box-shadow:0 0 7px '+p.c:''}"></div><span style="font-size:12px;color:${ph===p.id?'var(--t1)':'var(--t2)'};font-weight:${ph===p.id?600:400};flex:1">${p.l}</span>${i<cur?'<span style="color:var(--gr);font-size:11px;font-weight:700">✓</span>':''}</div>`).join('')}
+      ${as?`<div class="astream">${esc(as)}</div>`:''}
+    </div>`:''}
+  </div>`;
+
+  const resultsArea=re?`<div>
+    ${profileAlert}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      <span class="chip cn">${re.idees.length} idées</span>
+      <span class="chip ce">${re.validees.length} validées</span>
+      <span class="chip ca">${re.ameliorer.length} à améliorer</span>
+      <span class="chip cr">${re.rejetees.length} rejetées</span>
+    </div>
+    <div class="lbl" style="margin-bottom:10px">⭐ Meilleures opportunités</div>
+    <div class="${window.innerWidth>1100?'igrid':''}">${re.best.map((x,i)=>icardHTML(x,x,i)).join('')}</div>
+    <div style="margin-top:12px">
+      <button class="btn bh sm" onclick="S.expanded=!S.expanded;render()">${ex?'▲ Masquer':`▼ Voir toutes les ${re.idees.length} idées`}</button>
+      ${ex?`<div class="afi" style="margin-top:12px">
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
+          ${['Toutes','Validées','À améliorer','Rejetées'].map((l,i)=>`<button class="btn sm ${et===i?'bg':'bh'}" onclick="S.evalTab=${i};render()">${l}</button>`).join('')}
+        </div>
+        <div class="${window.innerWidth>1100?'igrid':''}">${[re.evals,re.validees,re.ameliorer,re.rejetees][et].map((x,i)=>icardHTML(x,x,i)).join('')}</div>
+      </div>`:''}
+    </div>
+  </div>`:`<div>${profileAlert}<div class="empty">Configurez les paramètres et lancez le workflow</div></div>`;
+
+  return `<div class="wflayout">${sidebar}<div>${resultsArea}</div></div>`;
+}
+
+function viewDashboard(){
+  const{projects:pj}=S;
+  if(!pj.length) return `<div class="empty">Aucun projet<br/><span style="font-size:12px">Lancez le workflow et cliquez "＋ Lancer"</span></div>`;
+  const ts=pj.reduce((s,p)=>s+p.steps.length,0),ds=pj.reduce((s,p)=>s+p.steps.filter(x=>x.done).length,0),gp=ts?Math.round(ds/ts*100):0;
+  const cats={};pj.forEach(p=>cats[p.cat]=(cats[p.cat]||0)+1);
+  // Alerts
+  const inactive=pj.filter(p=>{const d=new Date()-new Date(p.lastActivity||p.createdAt);return d>14*86400000&&p.steps.filter(s=>s.done).length<p.steps.length});
+  const nearDone=pj.filter(p=>{const d=p.steps.filter(s=>s.done).length;return d>0&&d===p.steps.length-1});
+  return `
+  ${inactive.length?`<div class="alert alert-warn">⚠ ${inactive.length} projet${inactive.length>1?'s':''} sans activité depuis +14 jours : ${inactive.map(p=>p.title).join(', ')}</div>`:''}
+  ${nearDone.length?`<div class="alert alert-ok">🎯 ${nearDone.length} projet${nearDone.length>1?'s':''} à une étape de la completion : ${nearDone.map(p=>p.title).join(', ')}</div>`:''}
+  <div class="krow afi">
+    <div class="card kcard"><div class="kval" style="color:var(--gold)">${pj.length}</div><div class="klbl">Projets</div></div>
+    <div class="card kcard"><div class="kval" style="color:var(--gr)">${ds}/${ts}</div><div class="klbl">Étapes</div></div>
+    <div class="card kcard"><div class="kval" style="color:var(--bl)">${gp}%</div><div class="klbl">Global</div></div>
+  </div>
+  <div class="card" style="margin-bottom:var(--gap)">
+    <div class="lbl" style="margin-bottom:12px">Avancement</div>
+    <div class="drow">${pj.map(p=>{const d=p.steps.filter(s=>s.done).length,pct=Math.round(d/p.steps.length*100);return `<div class="ditm">${donutSvg(pct,CC[p.cat]||'var(--bl)')}<div class="dlbl">${esc(p.title.slice(0,18))}${p.title.length>18?'…':''}</div></div>`}).join('')}</div>
+  </div>
+  <div class="card" style="margin-bottom:var(--gap)">
+    <div class="lbl" style="margin-bottom:10px">Répartition</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${Object.entries(cats).map(([cat,n])=>`<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2)"><span style="width:10px;height:10px;border-radius:3px;background:${CC[cat]};flex-shrink:0"></span>${esc(cat)} <strong style="color:${CC[cat]}">${n}</strong></div>`).join('')}</div>
+  </div>
+  <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div style="font-size:12px;color:var(--t2)">${S.driveStatus==='ok'?`☁️ Drive · ${S.lastSync?S.lastSync.toLocaleString('fr-FR'):''}`:S.driveStatus==='disconnected'?'💾 Local uniquement':'⟳ Sync…'}</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      ${S.driveStatus==='ok'?`<button class="btn bh sm" onclick="driveLoad()">↻ Sync</button>`:''}
+      <button class="btn bh sm" onclick="exportJSON()">⬇ Export</button>
+      <label class="btn bh sm" style="cursor:pointer">⬆ Import<input type="file" accept=".json" style="display:none" onchange="importJSON(this)"/></label>
+    </div>
+  </div>`;
+}
+
+function viewSaved(){
+  const{projects:pj}=S;
+  if(!pj.length) return `<div class="empty">Aucun projet<br/><span style="font-size:12px">Lancez le workflow et cliquez "＋ Lancer"</span></div>`;
+  return `<div class="pgrid">${pj.map((p,i)=>{
+    const done=p.steps.filter(s=>s.done).length,pct=Math.round(done/p.steps.length*100),col=CC[p.cat]||'var(--bl)';
+    const jCount=(p.journal||[]).length;
+    return `<div class="card afu" style="border-left:3px solid ${col};margin:0;cursor:pointer;transition:box-shadow .15s,transform .15s;animation-delay:${i*35}ms" onclick="openProj('${p.id}')" onmouseenter="this.style.boxShadow='var(--sh2)';this.style.transform='translateY(-1px)'" onmouseleave="this.style.boxShadow='var(--sh1)';this.style.transform='none'">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div style="font-weight:600;font-size:13px">${CI[p.cat]} ${esc(p.title)}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${esc(p.cat)} · ${fdate(p.createdAt)} ${jCount?`· <span style="color:var(--bl)">📓 ${jCount}</span>`:''}</div></div>
+        <button class="btn bh sm" onclick="event.stopPropagation();delProj('${p.id}')" style="color:var(--t3)">✕</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:5px"><span>Progression</span><span style="font-weight:600;color:${pct===100?'var(--gr)':'var(--t2)'}">${pct}% · ${done}/${p.steps.length}</span></div>
+      <div class="prog"><div class="progf" style="width:${pct}%;background:${pct===100?'var(--gr)':col}"></div></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function viewProject(){
+  const p=S.active;
+  if(!p) return `<div class="empty">Sélectionnez un projet</div>`;
+  const done=p.steps.filter(s=>s.done).length,pct=Math.round(done/p.steps.length*100),col=CC[p.cat]||'var(--bl)';
+  return `<div style="max-width:820px;margin:0 auto">
+    <div class="card gold" style="margin-bottom:var(--gap)">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:clamp(28px,5vw,36px);flex-shrink:0">${CI[p.cat]}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Instrument Serif',serif;font-size:clamp(17px,3vw,22px);line-height:1.2;margin-bottom:5px">${esc(p.title)}</div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:8px;line-height:1.6">${esc(p.idea?.d||'')}</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px">
+            <span class="chip cg">💰 ${esc(p.idea?.cap||'')}</span>
+            <span class="chip ce">📊 ${esc(p.idea?.pot||'')}/mois</span>
+            <span class="chip ca">⚡ ${esc(p.idea?.effort||'')}</span>
+            ${p.idea?.aivest?'<span class="chip cg" style="font-weight:700">✦ Aivest</span>':''}
+            ${p.idea?.custom?'<span class="chip cb">✎ Personnel</span>':''}
+          </div>
+          <div class="prog" style="height:4px"><div class="progf" style="width:${pct}%;background:${pct===100?'var(--gr)':col}"></div></div>
+          <div style="font-size:11px;color:var(--t3);margin-top:3px">${done}/${p.steps.length} étapes · ${pct}% · Dernière activité ${fdate(p.lastActivity||p.createdAt)}</div>
+        </div>
+      </div>
+    </div>
+    <div id="projContent">${projContentHTML()}</div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EXPORT / IMPORT
+═══════════════════════════════════════════════════════════════ */
+function exportJSON(){
+  const b=new Blob([JSON.stringify({projects:S.projects,customIdeas:S.customIdeas,profile:S.profile,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`aivest_${new Date().toISOString().slice(0,10)}.json`;a.click();
+}
+async function importJSON(input){
+  const file=input.files[0];if(!file) return;
+  try{
+    const raw=JSON.parse(await file.text());
+    const d=migrateData(raw);
+    const newP=d.projects.filter(p=>!S.projects.some(x=>x.id===p.id));
+    S.projects=[...S.projects,...newP];
+    if(d.customIdeas?.length) S.customIdeas=[...new Map([...S.customIdeas,...d.customIdeas].map(x=>[x.t,x])).values()];
+    if(d.profile) S.profile=d.profile;
+    scheduleSave();alert(`${newP.length} projet(s) importé(s).`);render();
+  }catch(e){alert('Erreur import : '+e.message)}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOPBAR UPDATE
+═══════════════════════════════════════════════════════════════ */
+function updateTopbar(){
+  const btn=document.getElementById('cfgBtn');if(!btn) return;
+  const ok=S.claudeKey&&S.clientId;
+  btn.style.color=ok?'var(--gr)':'';
+  btn.title=ok?'Configuré ✓':'Configuration requise';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN RENDER
+═══════════════════════════════════════════════════════════════ */
+function bindAll(){
+  document.querySelectorAll('[data-launch]').forEach(btn=>{
+    btn.addEventListener('click',()=>launchIdea(btn.getAttribute('data-launch')));
+  });
+}
+
+const TABS=[{id:'workflow',ico:'⚡',lbl:'Workflow'},{id:'dashboard',ico:'◎',lbl:'Dashboard'},{id:'saved',ico:'▤',lbl:'Projets'},{id:'project',ico:'◈',lbl:'Actif'}];
+
+function render(){
+  const{view:v,projects:pj,active:ac}=S;
+  // Desktop nav
+  document.getElementById('nav').innerHTML=TABS.map(t=>{
+    const dis=t.id==='project'&&!ac;
+    const badge=t.id==='saved'&&pj.length?`<span class="nbadge">${pj.length}</span>`:'';
+    return `<button class="npill${v===t.id?' on':''}" ${dis?'disabled':''} onclick="S.view='${t.id}';S.chatOpen=false;render()">${t.ico} ${t.lbl}${badge}</button>`;
+  }).join('');
+  // Mobile nav
+  document.getElementById('botnav').innerHTML=TABS.map(t=>{
+    const dis=t.id==='project'&&!ac;
+    return `<button class="btab${v===t.id?' on':''}" ${dis?'disabled':''} onclick="S.view='${t.id}';S.chatOpen=false;render()" style="position:relative"><span class="ico">${t.ico}</span><span>${t.lbl}</span>${t.id==='saved'&&pj.length?`<span style="position:absolute;top:3px;right:calc(50% - 16px);background:var(--gold);color:#fff;font-size:9px;font-weight:700;padding:0 4px;border-radius:99px">${pj.length}</span>`:''}</button>`;
+  }).join('');
+
+  let html='';
+  if(v==='workflow')  html=viewWorkflow();
+  if(v==='dashboard') html=viewDashboard();
+  if(v==='saved')     html=viewSaved();
+  if(v==='project')   html=viewProject();
+
+  document.getElementById('main').innerHTML=`<div id="syncBar">${syncBarHTML()}</div>${html}`;
+  bindAll();updateSyncDot();scrollChat();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════ */
+localLoad();
+S.clientId=ls.get('aw_client_id','');
+render();
+updateTopbar();
+
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    if(S.clientId) try{initGIS(S.clientId)}catch{}
+    updateTopbar();
+  },700);
+});
+</script>
+</body>
+</html>
