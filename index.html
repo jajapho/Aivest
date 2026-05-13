@@ -653,7 +653,7 @@ function renderSyncBar(){const el=document.getElementById('syncBar');if(el) el.i
    CLAUDE API
 ═══════════════════════════════════════════════════════════════ */
 // Gemini API — gemini-1.5-flash (gratuit, 1500 req/jour)
-const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_MODEL = 'gemini-2.0-flash';
 
 async function callClaude(msgs, sys) {
   if(!S.claudeKey) throw new Error('Clé API Gemini non configurée');
@@ -675,7 +675,7 @@ async function callClaude(msgs, sys) {
   // Ensure contents is not empty and starts with user
   if(!contents.length) contents.push({role:'user', parts:[{text:'Bonjour'}]});
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${S.claudeKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${S.claudeKey}`;
 
   let res, d;
   try {
