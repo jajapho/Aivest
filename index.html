@@ -430,6 +430,7 @@ const S = {
   claudeKey: '', clientId: '',
   driveToken: null, driveStatus: 'disconnected', lastSync: null,
   agentStream: '',
+  agentBMode: 'gemini', // 'gemini' | 'local'
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -903,8 +904,30 @@ function filterPool(c,t,p) {
   return [...aivest, ...custom, ...base];
 }
 
+// Agent B local — heuristique sans API
+function runAgentB_local(ideas, profile) {
+  const VV = [
+    [9,'validée','Excellente adéquation profil/opportunité, scalable rapidement','Nécessite rigueur et régularité dans l’exécution','Automatiser les tâches répétitives avec des outils no-code dès le 1er mois'],
+    [8,'validée','Faible barrière à l’entrée, premiers revenus rapides possibles','Concurrence élevée sur les plateformes généralistes','Se spécialiser dans une micro-niche très précise pour se démarquer'],
+    [7,'validée','Modèle éprouvé et scalable avec peu de capital','Dépendance aux algorithmes ou aux pubs payantes','Construire une liste email dès le départ pour réduire la dépendance'],
+    [8,'validée','Fort potentiel de revenu récurrent (MRR), valorisation élevée','Montée en puissance lente, nécessite patience','Viser 3 clients pilotes gratuits avant de facturer'],
+    [6,'à améliorer','Bon potentiel de revenu passif sur le long terme','Délai avant premier revenu significatif (3–6 mois)','Combiner avec une source de revenu rapide pour tenir la montée en puissance'],
+    [5,'à améliorer','Concept solide mais demande plus de préparation','Effort initial élevé avant de voir des résultats','Commencer en micro-test pour valider avant de scaler'],
+    [4,'rejetée','Idée intéressante sur le papier mais inadéquate au profil actuel','Trop risqué ou chronophage avec les contraintes actuelles','À réserver pour une phase ultérieure'],
+    [7,'validée','Revenu passif réel une fois le système en place','Temps de setup initial important','Documenter chaque process dès le début pour déléguer facilement'],
+  ];
+  return ideas.map((idea, i) => {
+    if(idea.aivest) return {...idea, score:10, verdict:'validée',
+      force:'Idée Aivest — validée et priorisée par le porteur du projet',
+      faiblesse:'Nécessite un vrai go-to-market et un MVP solide',
+      conseil:'Commencer par une landing page + waitlist pour valider'};
+    const v = VV[(i*3 + (S.params.cap||0) + (S.params.temps||0)) % VV.length];
+    return {...idea, score:v[0], verdict:v[1], force:v[2], faiblesse:v[3], conseil:v[4]};
+  });
+}
+
 async function runWF() {
-  if(!S.claudeKey) { openModal('cfgModal'); return; }
+  if(S.agentBMode==='gemini' && !S.claudeKey) { openModal('cfgModal'); return; }
   S.running=true; S.result=null; S.expanded=false; S.agentStream='';
   render();
 
@@ -921,9 +944,17 @@ async function runWF() {
   // Phase A1
   S.phase='a1'; S.agentStream='🔵 Agent A — Sélection de '+idees.length+' idées…'; render(); await sleep(600);
 
-  // Phase B — real Claude
-  S.phase='b'; S.agentStream='🟡 Agent B — Évaluation par Gemini (peut prendre 20–40s)…'; render();
-  const evals = await runAgentB_real(idees, S.profile);
+  // Phase B — Gemini ou local selon le mode
+  S.phase='b';
+  let evals;
+  if(S.agentBMode === 'gemini') {
+    S.agentStream='🟡 Agent B — Évaluation Gemini (peut prendre 20–40s)…'; render();
+    evals = await runAgentB_real(idees, S.profile);
+  } else {
+    S.agentStream='🟡 Agent B — Évaluation locale (instantanée)…'; render();
+    await sleep(400);
+    evals = runAgentB_local(idees, S.profile);
+  }
 
   // Phase A2 — refine based on B feedback
   S.phase='a2'; S.agentStream='🔵 Agent A — Affinement sur base des retours…'; render(); await sleep(500);
@@ -1308,9 +1339,21 @@ function viewWorkflow(){
         ${customCount?`<br/><strong style="color:var(--bl)">✎ Perso (${customCount})</strong> · incluses si profil compatible`:''}
       </div>
 
-      ${!S.claudeKey?`<div class="alert alert-warn" style="margin-bottom:12px;font-size:11px">⚠ Clé API Gemini requise pour les agents IA. <button class="btn bg sm" onclick="openModal('cfgModal')">Configurer</button></div>`:''}
+      <!-- Mode commutateur Agent B -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r5);padding:8px 11px;margin-bottom:12px">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--t1)">Agent B</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:1px">${S.agentBMode==='gemini'?'Évaluation IA réelle (Gemini)':'Évaluation heuristique locale'}</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn sm ${S.agentBMode==='gemini'?'bs':'bh'}" onclick="S.agentBMode='gemini';render()" title="Évaluation précise par Gemini AI">🤖 Gemini</button>
+          <button class="btn sm ${S.agentBMode==='local'?'bs':'bh'}" onclick="S.agentBMode='local';render()" title="Évaluation instantanée sans API">⚡ Local</button>
+        </div>
+      </div>
 
-      <button class="btn bs fw lg" ${ru||!S.claudeKey?'disabled':''} onclick="runWF()">
+      ${S.agentBMode==='gemini'&&!S.claudeKey?`<div class="alert alert-warn" style="margin-bottom:12px;font-size:11px">⚠ Clé API Gemini requise pour ce mode. <button class="btn bg sm" onclick="openModal('cfgModal')">Configurer</button></div>`:''}
+
+      <button class="btn bs fw lg" ${ru||(S.agentBMode==='gemini'&&!S.claudeKey)?'disabled':''} onclick="runWF()">
         ${ru?`<span class="spin">⟳</span> Agents en cours…`:re?'↺ Relancer':'▶ Lancer le workflow'}
       </button>
       <button class="btn bh fw sm" style="margin-top:8px" onclick="openModal('addIdeaModal')">＋ Ajouter une idée personnelle</button>
