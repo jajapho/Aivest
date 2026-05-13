@@ -1464,18 +1464,71 @@ function render(){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   AUTO-UNLOCK MODAL
+═══════════════════════════════════════════════════════════════ */
+function injectUnlockModal() {
+  const el = document.createElement('div');
+  el.id = 'unlockModal';
+  el.className = 'mbg';
+  el.style.cssText = 'display:flex;z-index:2000';
+  el.innerHTML = `<div class="modal" style="max-width:380px;text-align:center">
+    <div style="font-size:28px;margin-bottom:10px">&#128272;</div>
+    <div class="mtitle" style="font-size:20px">Deverrouiller le workspace</div>
+    <p style="font-size:13px;color:var(--t2);margin:10px 0 18px;line-height:1.6">
+      Configuration chiffree trouvee.<br/>Entrez votre mot de passe maitre pour charger vos cles API.
+    </p>
+    <input type="password" class="inp" id="unlockPwd" placeholder="Mot de passe maitre..." style="margin-bottom:12px;font-size:14px;text-align:center"
+      onkeydown="if(event.key==='Enter') unlockApp()"/>
+    <button class="btn bs fw" style="font-size:14px;padding:10px" onclick="unlockApp()">Deverrouiller</button>
+    <div id="unlockStatus" style="font-size:12px;min-height:18px;margin-top:10px;color:var(--rd)"></div>
+    <button class="btn bh sm" style="margin-top:8px;width:100%" onclick="document.getElementById('unlockModal').remove();render()">
+      Continuer sans deverrouiller
+    </button>
+  </div>`;
+  document.body.appendChild(el);
+  setTimeout(()=>document.getElementById('unlockPwd')?.focus(), 100);
+}
+
+async function unlockApp() {
+  const pwd = document.getElementById('unlockPwd')?.value.trim();
+  const statusEl = document.getElementById('unlockStatus');
+  if(!pwd) { if(statusEl) statusEl.textContent='Entrez votre mot de passe maitre.'; return; }
+  if(statusEl) statusEl.textContent='Dechiffrement en cours...';
+  try {
+    let cfg = null;
+    const local = ls.get('aw_cfg', null);
+    if(local) cfg = typeof local === 'string' ? JSON.parse(local) : local;
+    if(!cfg?.encrypted) { if(statusEl) statusEl.textContent='Aucune configuration trouvee.'; return; }
+    const plain = await aesDec(cfg.encrypted, pwd);
+    const data  = JSON.parse(plain);
+    if(data.claudeKey) S.claudeKey = data.claudeKey;
+    if(data.clientId)  { S.clientId = data.clientId; ls.set('aw_client_id', data.clientId); }
+    document.getElementById('unlockModal')?.remove();
+    updateTopbar();
+    if(S.clientId) try { initGIS(S.clientId); } catch(e){}
+    render();
+  } catch(e) {
+    if(statusEl) statusEl.textContent = 'Mot de passe incorrect.';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════ */
 localLoad();
-S.clientId=ls.get('aw_client_id','');
+S.clientId = ls.get('aw_client_id', '');
 render();
 updateTopbar();
 
-window.addEventListener('load',()=>{
-  setTimeout(()=>{
-    if(S.clientId) try{initGIS(S.clientId)}catch{}
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    if(S.clientId) try { initGIS(S.clientId); } catch(e){}
     updateTopbar();
-  },700);
+    // Show unlock modal automatically if config exists and keys not loaded
+    if(!S.claudeKey && ls.get('aw_cfg', null)) {
+      injectUnlockModal();
+    }
+  }, 800);
 });
 </script>
 </body>
