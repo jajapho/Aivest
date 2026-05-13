@@ -823,42 +823,50 @@ Chaque phase a 3–5 étapes concrètes. Sois très précis, pas générique.`;
 }
 
 async function runAgentB_real(ideas, profile) {
-  // Real Claude evaluation for each idea
   const results = [];
   const sys = buildAgentSys_B(profile);
-  
-  // Batch by groups of 3 to save tokens
-  for(let i=0; i<ideas.length; i+=3) {
-    const batch = ideas.slice(i, i+3);
-    const prompt = `Évalue ces idées de business :\n\n${batch.map((x,j)=>`${j+1}. "${x.t}" (${x.cat}) — Capital: ${x.cap}, Effort: ${x.effort}, Potentiel: ${x.pot}/mois\nDescription: ${x.d}`).join('\n\n')}\n\nRéponds avec un tableau JSON : [${batch.map(()=>'{}').join(',')}]`;
-    
+
+  // Aivest : score force, aucun appel API
+  ideas.filter(x=>x.aivest).forEach(idea => {
+    results.push({...idea, score:10, verdict:'validee',
+      force:'Idee Aivest validee et priorisee par le porteur du projet',
+      faiblesse:'Necessite un vrai go-to-market et un MVP solide',
+      conseil:'Commencer par une landing page + waitlist pour valider'});
+  });
+
+  // Non-Aivest : 1 seul appel API pour tout evaluer
+  const others = ideas.filter(x=>!x.aivest);
+  if(others.length) {
+    S.agentStream = '🟡 Agent B — Evaluation Gemini de ' + others.length + ' idees en 1 appel...'; render();
+    const prompt = 'Evalue ces ' + others.length + ' idees de business.\n\n' +
+      others.map((x,j)=>(j+1)+'. "'+x.t+'" ('+x.cat+') | Capital: '+x.cap+' | Effort: '+x.effort+' | Potentiel: '+x.pot+'/mois | '+x.d).join('\n') +
+      '\n\nReponds UNIQUEMENT avec un tableau JSON de exactement ' + others.length + ' objets dans le meme ordre :\n[{"score":8,"verdict":"validee","force":"...","faiblesse":"...","conseil":"..."},...]';
     try {
       const raw = await callClaude([{role:'user',content:prompt}], sys);
-      // Parse — find JSON array
       const match = raw.match(/\[[\s\S]*\]/);
-      if(match) {
-        const parsed = JSON.parse(match[0]);
-        batch.forEach((idea,j) => {
-          const ev = parsed[j]||{};
-          results.push({
-            ...idea,
-            score:    idea.aivest ? 10 : Math.min(10,Math.max(1,parseInt(ev.score)||6)),
-            verdict:  idea.aivest ? 'validée' : (ev.verdict||'à améliorer'),
-            force:    idea.aivest ? 'Idée Aivest — validée et priorisée par le porteur du projet' : (ev.force||'Potentiel identifié'),
-            faiblesse:idea.aivest ? 'Nécessite un vrai go-to-market et un MVP solide' : (ev.faiblesse||'À évaluer'),
-            conseil:  idea.aivest ? 'Commencer par une landing page + waitlist pour valider' : (ev.conseil||'Approfondissez l\'analyse'),
-          });
+      if(!match) throw new Error('Reponse non-JSON: ' + raw.slice(0,120));
+      const parsed = JSON.parse(match[0]);
+      others.forEach((idea,j) => {
+        const ev = parsed[j]||{};
+        const v = ev.verdict||'';
+        results.push({
+          ...idea,
+          score:   Math.min(10,Math.max(1,parseInt(ev.score)||6)),
+          verdict: v.includes('valid')?'valid\u00e9e':v.includes('rejet')?'rejet\u00e9e':'\u00e0 am\u00e9liorer',
+          force:   ev.force   || 'Potentiel identifie',
+          faiblesse: ev.faiblesse || 'A evaluer',
+          conseil: ev.conseil || 'Approfondissez l\'analyse',
         });
-      } else throw new Error('Parse failed');
+      });
     } catch(e) {
-      // Fallback si erreur API
-      batch.forEach(idea => {
-        results.push({...idea, score:idea.aivest?10:6, verdict:idea.aivest?'validée':'à améliorer',
-          force:'Évaluation en attente',faiblesse:'Erreur API — ' + (e.message||'inconnue').slice(0,60),conseil:'Vérifiez votre clé Gemini dans ⚙ Config'});
+      console.error('Agent B error:', e.message);
+      others.forEach(idea => {
+        results.push({...idea, score:6, verdict:'\u00e0 am\u00e9liorer',
+          force:'Evaluation non disponible',
+          faiblesse:'Erreur API : ' + (e.message||'').slice(0,80),
+          conseil:'Verifiez votre cle Gemini dans Config'});
       });
     }
-    // Small delay between batches
-    if(i+3 < ideas.length) await sleep(400);
   }
   return results;
 }
