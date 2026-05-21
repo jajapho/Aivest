@@ -654,7 +654,7 @@ function renderSyncBar(){const el=document.getElementById('syncBar');if(el) el.i
    CLAUDE API
 ═══════════════════════════════════════════════════════════════ */
 // Gemini API — gemini-1.5-flash (gratuit, 1500 req/jour)
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash-preview-04-17';
 
 async function callClaude(msgs, sys) {
   if(!S.claudeKey) throw new Error('Clé API Gemini non configurée');
