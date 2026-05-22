@@ -862,28 +862,31 @@ async function runAgentB_real(ideas, profile) {
       '\n\nReponds UNIQUEMENT avec un tableau JSON de exactement ' + others.length + ' objets dans le meme ordre :\n[{"score":8,"verdict":"validee","force":"...","faiblesse":"...","conseil":"..."},...]';
     try {
       const raw = await callClaude([{role:'user',content:prompt}], sys);
-      const match = raw.match(/\[[\s\S]*\]/);
-      if(!match) throw new Error('Reponse non-JSON: ' + raw.slice(0,120));
-      const parsed = JSON.parse(match[0]);
+      // Parser robuste : retire les backticks markdown, extrait le JSON même avec du texte autour
+      const cleaned = raw.replace(/```json/gi,'').replace(/```/g,'').trim();
+      const si = cleaned.indexOf('[');
+      const ei = cleaned.lastIndexOf(']');
+      if(si === -1 || ei === -1) throw new Error('Pas de JSON dans la réponse : ' + raw.slice(0,100));
+      const parsed = JSON.parse(cleaned.slice(si, ei+1));
       others.forEach((idea,j) => {
-        const ev = parsed[j]||{};
-        const v = ev.verdict||'';
+        const ev = parsed[j] || {};
+        const v  = (ev.verdict||'').toLowerCase();
         results.push({
           ...idea,
-          score:   Math.min(10,Math.max(1,parseInt(ev.score)||6)),
-          verdict: v.includes('valid')?'valid\u00e9e':v.includes('rejet')?'rejet\u00e9e':'\u00e0 am\u00e9liorer',
-          force:   ev.force   || 'Potentiel identifie',
-          faiblesse: ev.faiblesse || 'A evaluer',
-          conseil: ev.conseil || 'Approfondissez l\'analyse',
+          score:    Math.min(10, Math.max(1, parseInt(ev.score)||6)),
+          verdict:  v.includes('valid') ? 'validée' : v.includes('rejet') ? 'rejetée' : 'à améliorer',
+          force:    ev.force     || 'Potentiel identifié',
+          faiblesse:ev.faiblesse || 'À évaluer',
+          conseil:  ev.conseil   || "Approfondissez l\'analyse",
         });
       });
     } catch(e) {
       console.error('Agent B error:', e.message);
       others.forEach(idea => {
-        results.push({...idea, score:6, verdict:'\u00e0 am\u00e9liorer',
-          force:'Evaluation non disponible',
-          faiblesse:'Erreur API : ' + (e.message||'').slice(0,80),
-          conseil:'Verifiez votre cle Gemini dans Config'});
+        results.push({...idea, score:6, verdict:'à améliorer',
+          force:'Évaluation non disponible',
+          faiblesse:'Erreur parsing : ' + (e.message||'').slice(0,80),
+          conseil:'Réessayez — le mode Local fonctionne sans API'});
       });
     }
   }
