@@ -375,6 +375,7 @@ textarea{min-height:80px;line-height:1.55}
 ═══════════════════════════════════════════════════════════════ */
 const DRIVE_DATA_ID   = '1bSypuDu1jLL_9oKiWS563jRlR79W-bZ0';
 const DRIVE_CONFIG_ID = '1ezI54ljxSxI9D2Qws4fVB4u8aEQBpIoz';
+const DRIVE_POOL_ID   = '12OS85bxw8o-AMtpsVWpZWiWenNTZf4FM'; // pool_data.json
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -431,6 +432,7 @@ const S = {
   driveToken: null, driveStatus: 'disconnected', lastSync: null,
   agentStream: '',
   agentBMode: 'gemini', // 'gemini' | 'local'
+  dynamicPool: [],       // idées générées par Gemini, enrichies au fil des sessions
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -634,6 +636,8 @@ async function driveLoad(){
       }
     }
     S.driveStatus='ok';S.lastSync=new Date();
+    // Charger aussi le pool dynamique
+    drivePoolLoad();
   }catch(e){S.driveStatus='error'}
   updateSyncDot();renderSyncBar();updateTopbar();render();
 }
@@ -649,6 +653,59 @@ async function driveSave(){
   updateSyncDot();renderSyncBar();
 }
 function renderSyncBar(){const el=document.getElementById('syncBar');if(el) el.innerHTML=syncBarHTML()}
+
+/* ═══════════════════════════════════════════════════════════════
+   DYNAMIC POOL — chargement & enrichissement sur Drive
+═══════════════════════════════════════════════════════════════ */
+async function drivePoolLoad() {
+  if(!S.driveToken) { S.dynamicPool = ls.get('aw_dynpool', []); return; }
+  try {
+    const res = await driveReq(`https://www.googleapis.com/drive/v3/files/${DRIVE_POOL_ID}?alt=media`);
+    if(res.ok) {
+      const d = await res.json();
+      S.dynamicPool = Array.isArray(d.ideas) ? d.ideas : [];
+      ls.set('aw_dynpool', S.dynamicPool);
+    }
+  } catch(e) { S.dynamicPool = ls.get('aw_dynpool', []); }
+}
+
+async function drivePoolSave() {
+  ls.set('aw_dynpool', S.dynamicPool);
+  if(!S.driveToken) return;
+  try {
+    await driveReq(
+      `https://www.googleapis.com/upload/drive/v3/files/${DRIVE_POOL_ID}?uploadType=media`,
+      { method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ ideas:S.dynamicPool, version:1, lastUpdated:new Date().toISOString() }) }
+    );
+  } catch(e) { console.warn('Pool save failed:', e.message); }
+}
+
+// Ajoute les idées Gemini validées au pool dynamique (sans doublons)
+async function enrichPool(newIdeas) {
+  const existing = new Set([
+    ...BASE_POOL.map(x=>x.t),
+    ...AIVEST_POOL.map(x=>x.t),
+    ...(S.dynamicPool||[]).map(x=>x.t),
+    ...S.projects.map(x=>x.title),
+  ]);
+  const toAdd = newIdeas.filter(x =>
+    x.gemini &&
+    x.score >= 7 &&
+    x.verdict === 'validée' &&
+    !existing.has(x.t)
+  );
+  if(!toAdd.length) return;
+  // Strip eval fields, keep idea fields only
+  const clean = toAdd.map(x => ({
+    t:x.t, cat:x.cat, d:x.d, cap:x.cap, effort:x.effort, pot:x.pot,
+    minCap:x.minCap||0, minTemps:x.minTemps||0, minProfil:x.minProfil||0,
+    gemini:true, addedAt:new Date().toISOString(),
+  }));
+  S.dynamicPool = [...(S.dynamicPool||[]), ...clean];
+  await drivePoolSave();
+  console.log(`Pool enrichi de ${clean.length} idée(s) Gemini validées.`);
+}
 
 /* ═══════════════════════════════════════════════════════════════
    CLAUDE API
@@ -731,49 +788,78 @@ const AIVEST_POOL = [
 ];
 
 const BASE_POOL = [
+  // ── SERVICE ────────────────────────────────────────────────────────────────
   {t:'Micro-tâches Fiverr',cat:'Service',d:'Micro-prestations (logos, traduction, voix-off, montage)',cap:'0 €',effort:'faible',pot:'300–800 €',minCap:0,minTemps:0,minProfil:0},
-  {t:'Freelance rédaction SEO',cat:'Service',d:'Articles SEO et contenus pour sites e-commerce et blogs',cap:'0 €',effort:'moyen',pot:'800–2500 €',minCap:0,minTemps:1,minProfil:0},
-  {t:'Freelance design graphique',cat:'Service',d:'Identités visuelles et supports sur Malt ou Upwork',cap:'0 €',effort:'moyen',pot:'1000–3500 €',minCap:0,minTemps:1,minProfil:1},
-  {t:'Copywriting / pages de vente',cat:'Service',d:'Pages de vente et séquences email pour e-commerçants',cap:'0 €',effort:'moyen',pot:'2000–6000 €',minCap:0,minTemps:1,minProfil:1},
-  {t:'Gestion réseaux sociaux (SMM)',cat:'Service',d:'Comptes Instagram/LinkedIn de PME locales en retainer',cap:'0 €',effort:'moyen',pot:'1000–3000 €',minCap:0,minTemps:1,minProfil:0},
-  {t:'Montage vidéo freelance',cat:'Service',d:'Reels, YouTube Shorts et publicités pour créateurs et marques',cap:'0 €',effort:'moyen',pot:'1500–4000 €',minCap:0,minTemps:1,minProfil:1},
-  {t:'Ghost-writing LinkedIn / X',cat:'Service',d:'Posts viraux pour entrepreneurs souhaitant scaler leur personal brand',cap:'0 €',effort:'moyen',pot:'2000–6000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Freelance rédaction SEO',cat:'Service',d:'Articles SEO et contenus pour sites e-commerce et blogs',cap:'0 €',effort:'moyen',pot:'800–2500 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Freelance design graphique',cat:'Service',d:'Identités visuelles et supports sur Malt ou Upwork',cap:'0 €',effort:'moyen',pot:'1000–3500 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Copywriting / pages de vente',cat:'Service',d:'Pages de vente et séquences email pour e-commerçants',cap:'0 €',effort:'moyen',pot:'2000–6000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Gestion réseaux sociaux (SMM)',cat:'Service',d:'Comptes Instagram/LinkedIn de PME locales en retainer',cap:'0 €',effort:'moyen',pot:'1000–3000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Montage vidéo freelance',cat:'Service',d:'Reels, YouTube Shorts et publicités pour créateurs et marques',cap:'0 €',effort:'moyen',pot:'1500–4000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Ghost-writing LinkedIn / X',cat:'Service',d:'Posts viraux pour entrepreneurs souhaitant scaler leur personal brand',cap:'0 €',effort:'moyen',pot:'2000–6000 €',minCap:0,minTemps:0,minProfil:0},
   {t:'Coaching business en ligne',cat:'Service',d:'Accompagnement stratégie et exécution (150–400 €/h)',cap:'0 €',effort:'moyen',pot:'2000–8000 €',minCap:0,minTemps:1,minProfil:1},
-  {t:'Agence SEO locale',cat:'Service',d:'PME locales rankées sur Google, forfaits 500–2000 €/mois',cap:'0 €',effort:'élevé',pot:'3000–10000 €',minCap:0,minTemps:2,minProfil:2},
-  {t:'Agence Meta / Google Ads',cat:'Service',d:'Campagnes pub pour e-commerçants (% des dépenses + fixe)',cap:'0 €',effort:'élevé',pot:'3000–10000 €',minCap:0,minTemps:2,minProfil:2},
-  {t:'Consulting automatisation IA',cat:'Service',d:'Automatiser les process des PME avec Make, Zapier, IA',cap:'0 €',effort:'moyen',pot:'2000–8000 €',minCap:0,minTemps:1,minProfil:2},
-  {t:'Développement web freelance',cat:'Service',d:'Sites WordPress, Webflow ou apps sur mesure pour PME',cap:'0 €',effort:'élevé',pot:'2000–8000 €',minCap:0,minTemps:1,minProfil:2},
-  {t:'Dropshipping Print-on-demand',cat:'E-commerce',d:'Boutique Printful/Printify sans stock — t-shirts, mugs',cap:'0 €',effort:'moyen',pot:'500–2000 €',minCap:0,minTemps:1,minProfil:0},
-  {t:'Dropshipping AliExpress niche',cat:'E-commerce',d:'Shopify + AliExpress sur une niche précise',cap:'0 €',effort:'élevé',pot:'1000–5000 €',minCap:0,minTemps:2,minProfil:0},
-  {t:'Boutique Etsy produits digitaux',cat:'E-commerce',d:'Templates, prints, presets sur Etsy (revenu semi-passif)',cap:'0 €',effort:'moyen',pot:'500–3000 €',minCap:0,minTemps:1,minProfil:0},
-  {t:'Boutique e-commerce niche avec stock',cat:'E-commerce',d:'Stock initial + Shopify + pub ciblée sur niche précise',cap:'500–3000 €',effort:'élevé',pot:'1500–6000 €',minCap:1,minTemps:2,minProfil:0},
+  {t:'Agence SEO locale',cat:'Service',d:'PME locales rankées sur Google, forfaits 500–2000 €/mois',cap:'0 €',effort:'élevé',pot:'3000–10000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Agence Meta / Google Ads',cat:'Service',d:'Campagnes pub pour e-commerçants (% des dépenses + fixe)',cap:'0 €',effort:'élevé',pot:'3000–10000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Consulting automatisation IA',cat:'Service',d:'Automatiser les process des PME avec Make, Zapier, IA',cap:'0 €',effort:'moyen',pot:'2000–8000 €',minCap:0,minTemps:0,minProfil:1},
+  {t:'Développement web freelance',cat:'Service',d:'Sites WordPress, Webflow ou apps sur mesure pour PME',cap:'0 €',effort:'élevé',pot:'2000–8000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Transcription / sous-titrage',cat:'Service',d:'Transcription audio/vidéo et sous-titrage pour créateurs',cap:'0 €',effort:'faible',pot:'300–1200 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Assistant virtuel (VA)',cat:'Service',d:'Gestion agenda, emails, CRM pour entrepreneurs (15–40 €/h)',cap:'0 €',effort:'faible',pot:'500–2000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Traduction freelance',cat:'Service',d:'Documents juridiques, techniques ou marketing (0,10–0,20 €/mot)',cap:'0 €',effort:'faible',pot:'500–2000 €',minCap:0,minTemps:0,minProfil:0},
+  // ── E-COMMERCE ─────────────────────────────────────────────────────────────
+  {t:'Dropshipping Print-on-demand',cat:'E-commerce',d:'Boutique Printful/Printify sans stock — t-shirts, mugs',cap:'0 €',effort:'moyen',pot:'500–2000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Dropshipping AliExpress niche',cat:'E-commerce',d:'Shopify + AliExpress sur une niche précise (animaux, sport, bébé…)',cap:'0 €',effort:'élevé',pot:'1000–5000 €',minCap:0,minTemps:1,minProfil:0},
+  {t:'Boutique Etsy produits digitaux',cat:'E-commerce',d:'Templates, prints, presets sur Etsy (revenu semi-passif)',cap:'0 €',effort:'moyen',pot:'500–3000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Vente d\'ebooks / guides PDF',cat:'E-commerce',d:'Ebooks sur Gumroad ou Amazon KDP (7–49 €/unité)',cap:'0 €',effort:'moyen',pot:'300–2000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Vente de templates Notion / Figma',cat:'E-commerce',d:'Templates productivité ou design vendus sur Gumroad/Etsy',cap:'0 €',effort:'faible',pot:'300–2000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Vente de prompts IA (Gumroad/PromptBase)',cat:'E-commerce',d:'Packs de prompts ChatGPT/Midjourney vendus en digital',cap:'0 €',effort:'faible',pot:'200–1500 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Boutique e-commerce niche avec stock',cat:'E-commerce',d:'Stock initial + Shopify + pub ciblée sur niche précise',cap:'500–3000 €',effort:'élevé',pot:'1500–6000 €',minCap:1,minTemps:1,minProfil:0},
   {t:'Amazon FBA marque blanche',cat:'E-commerce',d:'Produit sourcé en Asie envoyé en entrepôt Amazon',cap:'3000–5000 €',effort:'moyen',pot:'2000–8000 €',minCap:2,minTemps:1,minProfil:1},
-  {t:'Abonnement box produits niche',cat:'E-commerce',d:'Box mensuelle sur niche passionnée (café, cosmétiques, jeux…)',cap:'2000–5000 €',effort:'élevé',pot:'2000–8000 €',minCap:1,minTemps:2,minProfil:1},
-  {t:'Cours en ligne (Udemy / Teachable)',cat:'E-commerce',d:'Formation vidéo vendue en one-shot sur Udemy ou Teachable',cap:'0 €',effort:'élevé',pot:'500–5000 €',minCap:0,minTemps:2,minProfil:1},
+  {t:'Abonnement box produits niche',cat:'E-commerce',d:'Box mensuelle sur niche passionnée (café, cosmétiques, jeux…)',cap:'2000–5000 €',effort:'élevé',pot:'2000–8000 €',minCap:1,minTemps:1,minProfil:0},
+  {t:'Cours en ligne (Udemy / Teachable)',cat:'E-commerce',d:'Formation vidéo vendue en one-shot sur Udemy ou Teachable',cap:'0 €',effort:'élevé',pot:'500–5000 €',minCap:0,minTemps:1,minProfil:0},
+  // ── ACHAT/REVENTE ───────────────────────────────────────────────────────────
   {t:'Achat/revente sneakers limitées',cat:'Achat/revente',d:'Sneakers édition limitée revendues avec marge',cap:'200–2000 €',effort:'faible',pot:'500–2000 €',minCap:0,minTemps:0,minProfil:0},
-  {t:'Achat/revente électronique reconditionné',cat:'Achat/revente',d:'iPhones, consoles cassés, réparés et revendus sur eBay',cap:'200–2000 €',effort:'moyen',pot:'800–3000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Achat/revente électronique reconditionné',cat:'Achat/revente',d:'iPhones, consoles cassés, réparés et revendus sur eBay',cap:'200–2000 €',effort:'moyen',pot:'800–3000 €',minCap:0,minTemps:0,minProfil:0},
   {t:'Achat/revente trading cards',cat:'Achat/revente',d:'Cartes Pokémon, Magic, gradées, revendues à la hausse',cap:'200–2000 €',effort:'faible',pot:'300–2000 €',minCap:0,minTemps:0,minProfil:0},
-  {t:'Flipping sites web (Flippa)',cat:'Achat/revente',d:'Sites stagnants optimisés et revendus 20–30x MRR',cap:'2000–20000 €',effort:'élevé',pot:'2000–15000 €',minCap:1,minTemps:2,minProfil:2},
-  {t:'Blog de niche + affiliation',cat:'Digital',d:'Blog niche précise, monétisé via Amazon Affiliés + Adsense',cap:'0 €',effort:'élevé',pot:'300–3000 €',minCap:0,minTemps:1,minProfil:0},
-  {t:'Chaîne YouTube monétisée',cat:'Création de contenu',d:'Contenu niche, monétisé via AdSense + sponsors + produits',cap:'0 €',effort:'élevé',pot:'200–8000 €',minCap:0,minTemps:2,minProfil:0},
-  {t:'TikTok / Instagram Reels creator',cat:'Création de contenu',d:'Contenu court viral, monétisé via Creator Fund + partenariats',cap:'0 €',effort:'élevé',pot:'300–5000 €',minCap:0,minTemps:2,minProfil:0},
-  {t:'Newsletter payante (Substack / Beehiiv)',cat:'Digital',d:'Newsletter premium sur thématique pointue, abonnement 5–20 €/mois',cap:'0 €',effort:'moyen',pot:'500–5000 €',minCap:0,minTemps:1,minProfil:1},
-  {t:'Cours en ligne premium (cohorte live)',cat:'Digital',d:'Formation live 6–8 semaines vendue 300–1500 € par participant',cap:'0 €',effort:'élevé',pot:'3000–15000 €',minCap:0,minTemps:2,minProfil:1},
-  {t:'Membership / communauté payante',cat:'Digital',d:'Communauté Discord ou Circle avec accès premium (10–50 €/mois)',cap:'0 €',effort:'moyen',pot:'500–5000 €',minCap:0,minTemps:1,minProfil:1},
-  {t:'Micro-SaaS B2B (outil de niche)',cat:'Tech',d:'Petit outil en ligne résolvant un problème précis, abonnement mensuel',cap:'0 €',effort:'élevé',pot:'1000–10000 €',minCap:0,minTemps:2,minProfil:2},
-  {t:'Extension Chrome / plugin VSCode',cat:'Tech',d:'Plugin vendu en one-shot ou abonnement sur les marketplaces',cap:'0 €',effort:'élevé',pot:'500–5000 €',minCap:0,minTemps:2,minProfil:2},
-  {t:'Outil IA no-code (Make + GPT)',cat:'Tech',d:'Mini-outils IA (générateur de contenu, analyse) vendus en SaaS',cap:'0–500 €',effort:'moyen',pot:'500–3000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Achat/revente meubles chinés',cat:'Achat/revente',d:'Meubles anciens relookés, revendus sur Marketplace FB ou Vinted',cap:'100–500 €',effort:'moyen',pot:'400–1500 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Vente sur Vinted / eBay',cat:'Achat/revente',d:'Revendre vêtements chinés ou lots achetés en vide-grenier',cap:'0–100 €',effort:'faible',pot:'200–800 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Flipping sites web (Flippa)',cat:'Achat/revente',d:'Sites stagnants optimisés et revendus 20–30x MRR',cap:'2000–20000 €',effort:'élevé',pot:'2000–15000 €',minCap:1,minTemps:1,minProfil:1},
+  {t:'Import Alibaba → revente locale',cat:'Achat/revente',d:'Produits sourcés en Chine, revendus via Amazon FBA ou boutique',cap:'1000–5000 €',effort:'élevé',pot:'2000–8000 €',minCap:1,minTemps:1,minProfil:0},
+  // ── DIGITAL ─────────────────────────────────────────────────────────────────
+  {t:'Blog de niche + affiliation',cat:'Digital',d:'Blog niche précise, monétisé via Amazon Affiliés + Adsense',cap:'0 €',effort:'élevé',pot:'300–3000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Newsletter payante (Substack / Beehiiv)',cat:'Digital',d:'Newsletter premium sur thématique pointue, abonnement 5–20 €/mois',cap:'0 €',effort:'moyen',pot:'500–5000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Cours en ligne premium (cohorte live)',cat:'Digital',d:'Formation live 6–8 semaines vendue 300–1500 € par participant',cap:'0 €',effort:'élevé',pot:'3000–15000 €',minCap:0,minTemps:1,minProfil:0},
+  {t:'Membership / communauté payante',cat:'Digital',d:'Communauté Discord ou Circle avec accès premium (10–50 €/mois)',cap:'0 €',effort:'moyen',pot:'500–5000 €',minCap:0,minTemps:0,minProfil:0},
+  // ── CRÉATION DE CONTENU ─────────────────────────────────────────────────────
+  {t:'Chaîne YouTube monétisée',cat:'Création de contenu',d:'Contenu niche, monétisé via AdSense + sponsors + produits',cap:'0 €',effort:'élevé',pot:'200–8000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'TikTok / Instagram Reels creator',cat:'Création de contenu',d:'Contenu court viral, monétisé via Creator Fund + partenariats',cap:'0 €',effort:'élevé',pot:'300–5000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Podcast monétisé',cat:'Création de contenu',d:'Podcast niche avec sponsoring et abonnement premium',cap:'0–200 €',effort:'moyen',pot:'300–3000 €',minCap:0,minTemps:0,minProfil:0},
+  // ── TECH ─────────────────────────────────────────────────────────────────────
+  {t:'Micro-SaaS B2B (outil de niche)',cat:'Tech',d:'Petit outil en ligne résolvant un problème précis, abonnement mensuel',cap:'0 €',effort:'élevé',pot:'1000–10000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Extension Chrome / plugin VSCode',cat:'Tech',d:'Plugin vendu en one-shot ou abonnement sur les marketplaces',cap:'0 €',effort:'élevé',pot:'500–5000 €',minCap:0,minTemps:1,minProfil:1},
+  {t:'Outil IA no-code (Make + GPT)',cat:'Tech',d:'Mini-outils IA (générateur de contenu, analyse) vendus en SaaS',cap:'0–500 €',effort:'moyen',pot:'500–3000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Bot automatisé (Discord, Telegram…)',cat:'Tech',d:'Bot utilitaire monétisé en abonnement sur serveurs communautaires',cap:'0 €',effort:'moyen',pot:'200–2000 €',minCap:0,minTemps:0,minProfil:0},
+  // ── INVESTISSEMENT ──────────────────────────────────────────────────────────
   {t:'ETF World en DCA mensuel',cat:'Investissement',d:'ETF S&P500 ou MSCI World en DCA via Trade Republic / Degiro',cap:'200–5000 €',effort:'très faible',pot:'50–300 € passif',minCap:0,minTemps:0,minProfil:0},
-  {t:'Portefeuille ETF + dividendes',cat:'Investissement',d:'ETF croissance + actions à dividendes élevés',cap:'2000–10000 €',effort:'faible',pot:'100–500 € passif',minCap:1,minTemps:0,minProfil:1},
+  {t:'Portefeuille ETF + dividendes',cat:'Investissement',d:'ETF croissance + actions à dividendes élevés',cap:'2000–10000 €',effort:'faible',pot:'100–500 € passif',minCap:1,minTemps:0,minProfil:0},
   {t:'SCPI pierre-papier',cat:'Investissement',d:'Parts de SCPI, rendement immobilier sans gestion (4–6%/an)',cap:'5000–20000 €',effort:'très faible',pot:'300–1200 € passif',minCap:2,minTemps:0,minProfil:0},
   {t:'Crowdfunding immobilier',cat:'Investissement',d:'Projets immobiliers via Homunity, Anaxago (8–12%/an)',cap:'1000–10000 €',effort:'faible',pot:'100–1200 € passif',minCap:0,minTemps:0,minProfil:0},
-  {t:'Location courte durée Airbnb',cat:'Immobilier',d:'Sous-louer sa chambre ou gérer un bien pour un tiers',cap:'0–1000 €',effort:'moyen',pot:'500–2500 €',minCap:0,minTemps:1,minProfil:0},
-  {t:'Conciergerie Airbnb',cat:'Immobilier',d:'Gérer les logements Airbnb d\'autres propriétaires (15–25%)',cap:'0 €',effort:'moyen',pot:'1000–4000 €',minCap:0,minTemps:1,minProfil:0},
+  {t:'Staking crypto (ETH, SOL…)',cat:'Investissement',d:'Staker des cryptos pour obtenir des récompenses passives (4–12%/an)',cap:'500–10000 €',effort:'très faible',pot:'50–1000 € passif',minCap:0,minTemps:0,minProfil:0},
+  {t:'Crypto DCA (Bitcoin / ETH)',cat:'Investissement',d:'Stratégie DCA sur Bitcoin ou Ethereum, horizon long terme',cap:'200–5000 €',effort:'très faible',pot:'variable',minCap:0,minTemps:0,minProfil:0},
+  // ── IMMOBILIER ──────────────────────────────────────────────────────────────
+  {t:'Location courte durée Airbnb',cat:'Immobilier',d:'Sous-louer sa chambre ou gérer un bien pour un tiers',cap:'0–1000 €',effort:'moyen',pot:'500–2500 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Conciergerie Airbnb',cat:'Immobilier',d:'Gérer les logements Airbnb d\'autres propriétaires (15–25%)',cap:'0 €',effort:'moyen',pot:'1000–4000 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Colocation locative optimisée',cat:'Immobilier',d:'Grand appartement loué en colocation pour maximiser le rendement',cap:'10000–25000 € apport',effort:'moyen',pot:'500–1500 € passif',minCap:2,minTemps:0,minProfil:0},
+  // ── COMMERCE ───────────────────────────────────────────────────────────────
   {t:'Distributeurs automatiques',cat:'Commerce',d:'Distributeurs en zones fort trafic (bureaux, gyms)',cap:'2000–8000 €',effort:'faible',pot:'300–1500 € passif',minCap:1,minTemps:0,minProfil:0},
+  {t:'Service garde d\'animaux / pet sitting',cat:'Commerce',d:'Garde, promenade, pension via Rover ou en direct',cap:'0 €',effort:'faible',pot:'300–1500 €',minCap:0,minTemps:0,minProfil:0},
+  {t:'Nettoyage professionnel',cat:'Commerce',d:'Micro-entreprise de nettoyage pour bureaux et particuliers',cap:'200–1000 €',effort:'moyen',pot:'800–3000 €',minCap:0,minTemps:0,minProfil:0},
+  // ── LOCATION ───────────────────────────────────────────────────────────────
   {t:'Location voiture (Getaround)',cat:'Location',d:'Louer sa voiture via Getaround ou Ouicar hors utilisation',cap:'0 €',effort:'très faible',pot:'200–600 € passif',minCap:0,minTemps:0,minProfil:0},
-  {t:'Achat site web existant (Flippa)',cat:'Business',d:'Site ou blog avec revenus prouvés racheté et optimisé',cap:'2000–20000 €',effort:'moyen',pot:'500–5000 € passif',minCap:1,minTemps:1,minProfil:1},
+  {t:'Location matériel photo / vidéo',cat:'Location',d:'Caméras, drones, éclairages loués sur KitSplit ou en direct',cap:'2000–10000 €',effort:'faible',pot:'300–2000 € passif',minCap:1,minTemps:0,minProfil:0},
+  {t:'Location camping-car / van aménagé',cat:'Location',d:'Van ou camping-car loué hors saison via Yescapa',cap:'0 €',effort:'faible',pot:'300–1500 € passif',minCap:0,minTemps:0,minProfil:0},
+  // ── BUSINESS ───────────────────────────────────────────────────────────────
+  {t:'Achat site web existant (Flippa)',cat:'Business',d:'Site ou blog avec revenus prouvés racheté et optimisé',cap:'2000–20000 €',effort:'moyen',pot:'500–5000 € passif',minCap:1,minTemps:0,minProfil:0},
+  {t:'Achat newsletter existante',cat:'Business',d:'Newsletter avec abonnés engagés rachetée et monétisée',cap:'1000–10000 €',effort:'moyen',pot:'500–5000 €',minCap:1,minTemps:0,minProfil:0},
 ];
-
 const CI={'App Mobile':'📱',Service:'🛠','E-commerce':'🛒','Achat/revente':'🔄',Digital:'💻','Création de contenu':'🎬',Investissement:'📈',Immobilier:'🏠',Tech:'⚙️',Commerce:'🏪',Location:'🔑',Business:'💼'};
 const CC={'App Mobile':'var(--gold)','Service':'var(--bl)','E-commerce':'var(--gr)','Achat/revente':'var(--am)','Digital':'var(--bl)','Création de contenu':'var(--rd)','Investissement':'var(--gr)','Immobilier':'var(--gold)','Tech':'var(--pu)','Commerce':'var(--am)','Location':'var(--gr)','Business':'var(--gold)'};
 const CK={'App Mobile':'cg','Service':'cb','E-commerce':'ce','Achat/revente':'ca','Digital':'cb','Création de contenu':'cr','Investissement':'ce','Immobilier':'cg','Tech':'cp','Commerce':'ca','Location':'ce','Business':'cg'};
@@ -781,6 +867,82 @@ const CK={'App Mobile':'cg','Service':'cb','E-commerce':'ce','Achat/revente':'ca
 /* ═══════════════════════════════════════════════════════════════
    AGENTS — real Claude calls
 ═══════════════════════════════════════════════════════════════ */
+// Agent A — génération dynamique d'idées par Gemini
+function buildAgentSys_A() {
+  return `Tu es l'Agent A — chasseur d'opportunités business innovantes.
+Tu génères des idées de business précises, réalistes et adaptées au profil fourni.
+
+RÈGLES :
+- Idées concrètes, nichées, pas génériques
+- Tendances 2024-2025 et niches émergentes
+- Diversité des catégories (tech, service, contenu, e-commerce, physique…)
+- Chaque idée doit être DIFFÉRENTE des exemples classiques (pas de "dropshipping générique" etc.)
+- Réfléchis aux nouvelles opportunités : IA, creator economy, local, B2B SMB, niche communautés…
+
+Réponds UNIQUEMENT avec un tableau JSON valide sans markdown :
+[
+  {
+    "t": "<titre court et précis de l'idée>",
+    "cat": "<Service|E-commerce|Tech|Digital|Création de contenu|Investissement|Immobilier|Commerce|Achat/revente|Location|Business|App Mobile>",
+    "d": "<description en 1-2 phrases, très concrète>",
+    "cap": "<capital requis ex: 0 €  ou 500-2000 €>",
+    "effort": "<très faible|faible|moyen|élevé>",
+    "pot": "<potentiel mensuel ex: 500-3000 €>",
+    "minCap": <0|1|2|3>,
+    "minTemps": <0|1|2>,
+    "minProfil": <0|1|2>
+  }
+]
+minCap: 0=<500€ 1=500-5k€ 2=5-20k€ 3=>20k€
+minTemps: 0=<5h/sem 1=5-15h 2=temps plein
+minProfil: 0=débutant 1=intermédiaire 2=expert`;
+}
+
+async function runAgentA_gemini(nb, profile, launched) {
+  const sys = buildAgentSys_A();
+  const alreadyInPool = [
+    ...BASE_POOL.map(x=>x.t),
+    ...AIVEST_POOL.map(x=>x.t),
+    ...(S.dynamicPool||[]).map(x=>x.t),
+    ...[...launched],
+  ].slice(0,30).join(', ');
+
+  const prompt = `Génère exactement ${nb} idées de business NOUVELLES et PRÉCISES pour cet investisseur.
+
+PROFIL : ${profileSummary(profile)}
+Capital : ${['<500€','500-5k€','5-20k€','>20k€'][S.params.cap]||'variable'}
+Temps disponible : ${['<5h/semaine','5-15h/semaine','temps plein'][S.params.temps]||'variable'}
+Niveau : ${['débutant','intermédiaire','expert'][S.params.profil]||'variable'}
+
+Idées déjà proposées à NE PAS répéter : ${alreadyInPool||'aucune'}
+
+Focus sur des niches précises, tendances 2025, opportunités sous-exploitées.
+Génère exactement ${nb} objets JSON dans le tableau.`;
+
+  try {
+    const raw = await callClaude([{role:'user', content:prompt}], sys);
+    const cleaned = raw.replace(/\`\`\`json/gi,'').replace(/\`\`\`/g,'').trim();
+    const si = cleaned.indexOf('['), ei = cleaned.lastIndexOf(']');
+    if(si === -1 || ei === -1) throw new Error('Pas de JSON');
+    const parsed = JSON.parse(cleaned.slice(si, ei+1));
+    return parsed.map(x => ({
+      t:       x.t     || 'Idée sans titre',
+      cat:     x.cat   || 'Service',
+      d:       x.d     || '',
+      cap:     x.cap   || '0 €',
+      effort:  x.effort|| 'moyen',
+      pot:     x.pot   || 'Variable',
+      minCap:  parseInt(x.minCap)||0,
+      minTemps:parseInt(x.minTemps)||0,
+      minProfil:parseInt(x.minProfil)||0,
+      gemini:  true, // badge source
+    }));
+  } catch(e) {
+    console.warn('Agent A Gemini failed:', e.message);
+    return []; // fallback gracieux
+  }
+}
+
 function buildAgentSys_B(profile) {
   return `Tu es l'Agent B — évaluateur expert en faisabilité business.
 Tu analyses des idées de business en tenant compte du profil RÉEL de l'investisseur.
@@ -919,10 +1081,11 @@ Profil investisseur : ${profileSummary(profile)}`;
    WORKFLOW ENGINE
 ═══════════════════════════════════════════════════════════════ */
 function filterPool(c,t,p) {
-  const custom = (S.customIdeas||[]).filter(x=>x.minCap<=c&&x.minTemps<=t&&x.minProfil<=p);
-  const aivest = AIVEST_POOL.filter(x=>x.minCap<=c&&x.minTemps<=t&&x.minProfil<=p);
-  const base   = BASE_POOL.filter(x=>x.minCap<=c&&x.minTemps<=t&&x.minProfil<=p);
-  return [...aivest, ...custom, ...base];
+  const custom  = (S.customIdeas||[]).filter(x=>x.minCap<=c&&x.minTemps<=t&&x.minProfil<=p);
+  const aivest  = AIVEST_POOL.filter(x=>x.minCap<=c&&x.minTemps<=t&&x.minProfil<=p);
+  const base    = BASE_POOL.filter(x=>x.minCap<=c&&x.minTemps<=t&&x.minProfil<=p);
+  const dynamic = (S.dynamicPool||[]).filter(x=>x.minCap<=c&&x.minTemps<=t&&x.minProfil<=p);
+  return [...aivest, ...custom, ...base, ...dynamic];
 }
 
 // Agent B local — heuristique sans API
@@ -953,32 +1116,50 @@ async function runWF() {
   render();
 
   const {cap,temps,profil,nb} = S.params;
-  // Idées déjà lancées — exclues du workflow
   const launched = new Set(S.projects.map(p=>p.title));
 
-  const aivest = AIVEST_POOL.filter(x=>x.minCap<=cap&&x.minTemps<=temps&&x.minProfil<=profil&&!launched.has(x.t));
+  // ── Agent A : idées statiques (pool) ──────────────────────────────────────
+  S.phase='a1';
+  const aivest  = AIVEST_POOL.filter(x=>x.minCap<=cap&&x.minTemps<=temps&&x.minProfil<=profil&&!launched.has(x.t));
   const custom  = (S.customIdeas||[]).filter(x=>x.minCap<=cap&&x.minTemps<=temps&&x.minProfil<=profil&&!launched.has(x.t));
-  const rest    = BASE_POOL.filter(x=>x.minCap<=cap&&x.minTemps<=temps&&x.minProfil<=profil&&!launched.has(x.t));
-  const picked  = shuffle(rest).slice(0, Math.max(0, nb - aivest.length - custom.length));
-  const idees   = [...aivest, ...custom, ...picked];
+  const dynPool = (S.dynamicPool||[]).filter(x=>x.minCap<=cap&&x.minTemps<=temps&&x.minProfil<=profil&&!launched.has(x.t));
+  const staticBase = BASE_POOL.filter(x=>x.minCap<=cap&&x.minTemps<=temps&&x.minProfil<=profil&&!launched.has(x.t));
 
-  // Phase A1
-  S.phase='a1'; S.agentStream='🔵 Agent A — Sélection de '+idees.length+' idées…'; render(); await sleep(600);
+  // Quota pool statique : moitié du nb demandé (min 5)
+  const nbStatic = Math.min(Math.floor(nb/2), staticBase.length + dynPool.length);
+  const staticPicked = shuffle([...staticBase, ...dynPool]).slice(0, Math.max(5, nbStatic - aivest.length - custom.length));
 
-  // Phase B — Gemini ou local selon le mode
+  S.agentStream = `🔵 Agent A — Pool statique : ${aivest.length + custom.length + staticPicked.length} idées chargées…`; render();
+  await sleep(400);
+
+  // ── Agent A : idées dynamiques Gemini (autre moitié) ─────────────────────
+  let geminiIdeas = [];
+  if(S.agentBMode === 'gemini' && S.claudeKey) {
+    const nbGemini = Math.max(3, nb - aivest.length - custom.length - staticPicked.length);
+    S.agentStream = `🔵 Agent A — Gemini génère ${nbGemini} idées dynamiques…`; render();
+    geminiIdeas = await runAgentA_gemini(nbGemini, S.profile, launched);
+    S.agentStream = `🔵 Agent A — ${geminiIdeas.length} idées Gemini + ${aivest.length + custom.length + staticPicked.length} idées pool = ${aivest.length + custom.length + staticPicked.length + geminiIdeas.length} total`; render();
+    await sleep(300);
+  }
+
+  const idees = [...aivest, ...custom, ...staticPicked, ...geminiIdeas];
+
+  // ── Agent B : évaluation ─────────────────────────────────────────────────
   S.phase='b';
   let evals;
   if(S.agentBMode === 'gemini') {
-    S.agentStream='🟡 Agent B — Évaluation Gemini (peut prendre 20–40s)…'; render();
+    S.agentStream='🟡 Agent B — Évaluation Gemini de ' + idees.length + ' idées…'; render();
     evals = await runAgentB_real(idees, S.profile);
+    // Enrichissement automatique du pool avec les idées Gemini validées
+    await enrichPool(evals);
   } else {
     S.agentStream='🟡 Agent B — Évaluation locale (instantanée)…'; render();
     await sleep(400);
     evals = runAgentB_local(idees, S.profile);
   }
 
-  // Phase A2 — refine based on B feedback
-  S.phase='a2'; S.agentStream='🔵 Agent A — Affinement sur base des retours…'; render(); await sleep(500);
+  // ── Agent A2 : tri et sélection finale ───────────────────────────────────
+  S.phase='a2'; S.agentStream='🔵 Agent A — Tri et sélection finale…'; render(); await sleep(400);
   const validees  = evals.filter(e=>e.verdict==='validée').sort((a,b)=>b.score-a.score);
   const ameliorer = evals.filter(e=>e.verdict==='à améliorer').sort((a,b)=>b.score-a.score);
   const rejetees  = evals.filter(e=>e.verdict==='rejetée');
@@ -1202,6 +1383,8 @@ function icardHTML(idea,ev,idx){
           <span style="font-weight:600;font-size:clamp(12px,1.5vw,13px);line-height:1.35">${esc(idea.t)}</span>
           ${isAv?'<span class="chip xs cg" style="font-weight:700">✦ Aivest</span>':''}
           ${isCu?'<span class="chip xs cb">✎ Personnel</span>':''}
+          ${idea.gemini&&!idea.aivest&&!idea.custom?'<span class="chip xs cp">🤖 Gemini</span>':''}
+          ${!idea.gemini&&!idea.aivest&&!idea.custom?'<span class="chip xs cn">📦 Pool</span>':''}}
           <span class="chip xs ${ck}">${esc(idea.cat)}</span>
           ${ev?`<span class="chip xs ${vck}">${esc(ev.verdict)}</span>`:''}
         </div>
@@ -1356,8 +1539,10 @@ function viewWorkflow(){
       </div>
 
       <div style="background:var(--gold-bg);border:1px solid var(--gold-bd);border-radius:var(--r5);padding:10px;margin-bottom:12px;font-size:12px;line-height:1.6">
-        <strong style="color:var(--gold-dk)">✦ Aivest (${AIVEST_POOL.length})</strong> · <span style="color:var(--t2)">Toujours incluses, toujours score 10</span>
-        ${customCount?`<br/><strong style="color:var(--bl)">✎ Perso (${customCount})</strong> · incluses si profil compatible`:''}
+        <div style="margin-bottom:3px"><strong style="color:var(--gold-dk)">✦ Aivest (${AIVEST_POOL.length})</strong> · <span style="color:var(--t2)">Toujours incluses — score 10</span></div>
+        <div style="margin-bottom:3px"><strong style="color:var(--t1)">📦 Pool statique (${BASE_POOL.length})</strong> · <span style="color:var(--t2)">idées curatées</span></div>
+        <div style="margin-bottom:${customCount||S.dynamicPool?.length?'3':'0'}px"><strong style="color:var(--pu)">🤖 Pool Gemini (${(S.dynamicPool||[]).length})</strong> · <span style="color:var(--t2)">enrichi à chaque session</span></div>
+        ${customCount?`<div><strong style="color:var(--bl)">✎ Perso (${customCount})</strong> · <span style="color:var(--t2)">vos idées ajoutées</span></div>`:''}
       </div>
 
       <!-- Mode commutateur Agent B -->
@@ -1394,6 +1579,8 @@ function viewWorkflow(){
       <span class="chip ce">${re.validees.length} validées</span>
       <span class="chip ca">${re.ameliorer.length} à améliorer</span>
       <span class="chip cr">${re.rejetees.length} rejetées</span>
+      <span class="chip cp">🤖 ${re.idees.filter(x=>x.gemini&&!x.aivest).length} Gemini</span>
+      <span class="chip cn">📦 ${re.idees.filter(x=>!x.gemini&&!x.aivest&&!x.custom).length} Pool</span>
     </div>
     <div class="lbl" style="margin-bottom:10px">⭐ Meilleures opportunités</div>
     <div class="${window.innerWidth>1100?'igrid':''}">${re.best.map((x,i)=>icardHTML(x,x,i)).join('')}</div>
@@ -1624,7 +1811,8 @@ async function unlockApp() {
 ═══════════════════════════════════════════════════════════════ */
 async function initApp() {
   localLoad();
-  S.clientId = ls.get('aw_client_id', '');
+  S.clientId    = ls.get('aw_client_id', '');
+  S.dynamicPool = ls.get('aw_dynpool', []);
   render();
   updateTopbar();
 
