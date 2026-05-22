@@ -657,10 +657,14 @@ function renderSyncBar(){const el=document.getElementById('syncBar');if(el) el.i
 // Ordre de priorité : on essaie chaque modèle jusqu'à trouver celui qui fonctionne
 const GEMINI_CANDIDATES = [
   'gemini-2.5-flash',
+  'gemini-2.5-flash-preview-05-20',
+  'gemini-2.5-flash-preview-04-17',
   'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
   'gemini-1.5-flash',
   'gemini-1.5-flash-latest',
-  'gemini-pro',
+  'gemini-1.5-flash-8b',
+  'gemini-1.0-pro',
 ];
 let _activeModel = null; // mis en cache après détection
 
@@ -1615,20 +1619,21 @@ async function unlockApp() {
 /* ═══════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════ */
-localLoad();
-S.clientId = ls.get('aw_client_id', '');
-render();
-updateTopbar();
+async function initApp() {
+  localLoad();
+  S.clientId = ls.get('aw_client_id', '');
+  render();
+  updateTopbar();
 
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    if(S.clientId) try { initGIS(S.clientId); } catch(e){}
-    updateTopbar();
-    // Auto-déchiffrement si mdp mémorisé en sessionStorage (F5 transparent)
-    if(!S.claudeKey && ls.get('aw_cfg', null)) {
+  // Init GIS si clientId connu
+  if(S.clientId) try { initGIS(S.clientId); } catch(e) {}
+
+  // Auto-déchiffrement avec mdp de session (F5 transparent)
+  if(!S.claudeKey) {
+    const hasCfg = !!ls.get('aw_cfg', null);
+    if(hasCfg) {
       const sessionPwd = sessionStorage.getItem('aw_session_pwd');
       if(sessionPwd) {
-        // Tentative silencieuse avec le mdp de session
         try {
           const raw = ls.get('aw_cfg', null);
           const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -1639,19 +1644,25 @@ window.addEventListener('load', () => {
             if(data.clientId)  { S.clientId = data.clientId; ls.set('aw_client_id', data.clientId); }
             updateTopbar();
             if(S.clientId) try { initGIS(S.clientId); } catch(e) {}
-            render();
           }
         } catch(e) {
-          // Mdp de session invalide → modale
+          // Mdp de session invalide ou expiré
           sessionStorage.removeItem('aw_session_pwd');
           injectUnlockModal();
+          return;
         }
       } else {
         injectUnlockModal();
+        return;
       }
     }
-  }, 800);
-});
+  }
+
+  render();
+  updateTopbar();
+}
+
+window.addEventListener('load', () => { initApp(); });
 </script>
 </body>
 </html>
