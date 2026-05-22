@@ -447,6 +447,30 @@ const uid   = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
 const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fdate = d => new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
 const ftime = d => new Date(d).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+// Extraction JSON robuste — backticks markdown, texte autour, niveaux imbriques
+function extractJSON(raw, type) {
+  if(!raw) throw new Error('Reponse Gemini vide');
+  type = type || 'object';
+  var s = raw.replace(/```json/gi,'').replace(/```/g,'').trim();
+  var open  = type === 'array' ? '[' : '{';
+  var close = type === 'array' ? ']' : '}';
+  var si = s.indexOf(open);
+  if(si === -1) throw new Error('Pas de ' + open + ' dans la reponse : ' + raw.slice(0,60));
+  var depth=0, ei=-1, inStr=false, esc=false;
+  for(var i=si; i<s.length; i++) {
+    var ch=s[i];
+    if(esc){esc=false;continue;}
+    if(ch==='\\' && inStr){esc=true;continue;}
+    if(ch==='"'){inStr=!inStr;continue;}
+    if(inStr) continue;
+    if(ch===open) depth++;
+    if(ch===close){depth--;if(depth===0){ei=i;break;}}
+  }
+  if(ei===-1) throw new Error('JSON non ferme dans la reponse Gemini');
+  try { return JSON.parse(s.slice(si,ei+1)); }
+  catch(e){ throw new Error('JSON invalide: '+e.message+' | '+s.slice(si,si+50)); }
+}
 const shuffle = a => [...a].sort(()=>Math.random()-.5);
 
 /* ═══════════════════════════════════════════════════════════════
@@ -921,10 +945,7 @@ Génère exactement ${nb} objets JSON dans le tableau.`;
 
   try {
     const raw = await callClaude([{role:'user', content:prompt}], sys);
-    const cleaned = raw.replace(/\`\`\`json/gi,'').replace(/\`\`\`/g,'').trim();
-    const si = cleaned.indexOf('['), ei = cleaned.lastIndexOf(']');
-    if(si === -1 || ei === -1) throw new Error('Pas de JSON');
-    const parsed = JSON.parse(cleaned.slice(si, ei+1));
+    const parsed = extractJSON(raw, 'array');
     return parsed.map(x => ({
       t:       x.t     || 'Idée sans titre',
       cat:     x.cat   || 'Service',
@@ -1024,12 +1045,7 @@ async function runAgentB_real(ideas, profile) {
       '\n\nReponds UNIQUEMENT avec un tableau JSON de exactement ' + others.length + ' objets dans le meme ordre :\n[{"score":8,"verdict":"validee","force":"...","faiblesse":"...","conseil":"..."},...]';
     try {
       const raw = await callClaude([{role:'user',content:prompt}], sys);
-      // Parser robuste : retire les backticks markdown, extrait le JSON même avec du texte autour
-      const cleaned = raw.replace(/```json/gi,'').replace(/```/g,'').trim();
-      const si = cleaned.indexOf('[');
-      const ei = cleaned.lastIndexOf(']');
-      if(si === -1 || ei === -1) throw new Error('Pas de JSON dans la réponse : ' + raw.slice(0,100));
-      const parsed = JSON.parse(cleaned.slice(si, ei+1));
+      const parsed = extractJSON(raw, 'array');
       others.forEach((idea,j) => {
         const ev = parsed[j] || {};
         const v  = (ev.verdict||'').toLowerCase();
@@ -1069,9 +1085,7 @@ Profil investisseur : ${profileSummary(profile)}`;
 
   try {
     const raw = await callClaude([{role:'user',content:prompt}], sys);
-    const match = raw.match(/\{[\s\S]*\}/);
-    if(match) return JSON.parse(match[0]);
-    throw new Error('Parse failed');
+    return extractJSON(raw, 'object');
   } catch(e) {
     return null;
   }
