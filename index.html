@@ -533,6 +533,7 @@ async function saveCfg() {
     if(cid){S.clientId=cid;ls.set('aw_client_id',cid)}
     if(S.driveToken){
       await driveReq(`https://www.googleapis.com/upload/drive/v3/files/${DRIVE_CONFIG_ID}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
+      ls.set('aw_cfg', JSON.stringify(cfg)); // cache local pour les nouveaux appareils
       cfgStatus('✓ Clés chiffrées et sauvegardées sur Drive.',true);
     } else {
       ls.set('aw_cfg',JSON.stringify(cfg));
@@ -559,7 +560,8 @@ async function loadCfg() {
     if(d.clientId){S.clientId=d.clientId;ls.set('aw_client_id',d.clientId)}
     document.getElementById('claudeKeyInp').value=d.claudeKey?'••••••••':'';
     document.getElementById('clientIdInp').value=d.clientId||'';
-    cfgStatus('✓ Clés chargées avec succès.',true);
+    ls.set('aw_cfg', JSON.stringify(cfg)); // cache local pour les prochains F5
+    cfgStatus('✓ Clés chargées et mises en cache local.',true);
     updateTopbar();
     if(d.clientId&&!S.driveToken) initGIS(d.clientId);
   } catch(e){cfgStatus('✗ Mot de passe incorrect.',false)}
@@ -1789,8 +1791,16 @@ function injectUnlockModal() {
       onkeydown="if(event.key==='Enter') unlockApp()"/>
     <button class="btn bs fw" style="font-size:14px;padding:10px" onclick="unlockApp()">Deverrouiller</button>
     <div id="unlockStatus" style="font-size:12px;min-height:18px;margin-top:10px;color:var(--rd)"></div>
-    <button class="btn bh sm" style="margin-top:8px;width:100%" onclick="document.getElementById('unlockModal').remove();render()">
-      Continuer sans deverrouiller
+    <div style="font-size:11px;color:#8a8896;margin-top:12px;line-height:1.6;text-align:left;background:#f4f2ee;border-radius:8px;padding:10px">
+      <strong>Nouvel appareil ?</strong><br/>
+      Si c'est votre première fois sur cet appareil, connectez d'abord Drive<br/>
+      via <strong>⚙ Config</strong> puis entrez votre mot de passe maître pour récupérer vos clés.
+    </div>
+    <button class="btn bh sm" style="margin-top:10px;width:100%" onclick="document.getElementById('unlockModal').remove();openModal('cfgModal')">
+      ⚙ Je suis sur un nouvel appareil
+    </button>
+    <button class="btn bh sm" style="margin-top:6px;width:100%;opacity:.6" onclick="document.getElementById('unlockModal').remove();render()">
+      Continuer sans déverrouiller
     </button>
   </div>`;
   document.body.appendChild(el);
@@ -1800,25 +1810,61 @@ function injectUnlockModal() {
 async function unlockApp() {
   const pwd = document.getElementById('unlockPwd')?.value.trim();
   const statusEl = document.getElementById('unlockStatus');
-  if(!pwd) { if(statusEl) statusEl.textContent='Entrez votre mot de passe maitre.'; return; }
-  if(statusEl) statusEl.textContent='Dechiffrement en cours...';
+  if(!pwd) { if(statusEl) statusEl.textContent = 'Entrez votre mot de passe maître.'; return; }
+  if(statusEl) statusEl.textContent = 'Déchiffrement en cours…';
+
+  // Cherche la config : localStorage d'abord, puis Drive si connecté
+  let cfg = null;
+  const local = ls.get('aw_cfg', null);
+  if(local) cfg = typeof local === 'string' ? JSON.parse(local) : local;
+
+  // Si pas de config locale ET Drive connecté → tente Drive
+  if(!cfg?.encrypted && S.driveToken) {
+    if(statusEl) statusEl.textContent = 'Config non trouvée en local, tentative Drive…';
+    try {
+      const res = await driveReq(`https://www.googleapis.com/drive/v3/files/${DRIVE_CONFIG_ID}?alt=media`);
+      if(res.ok) { const d = await res.json(); if(d?.encrypted) cfg = d; }
+    } catch(e) {}
+  }
+
+  if(!cfg?.encrypted) {
+    if(statusEl) statusEl.textContent = '⚠ Aucune configuration trouvée. Utilisez ⚙ Config pour reconfigurer.';
+    return;
+  }
+
   try {
-    let cfg = null;
-    const local = ls.get('aw_cfg', null);
-    if(local) cfg = typeof local === 'string' ? JSON.parse(local) : local;
-    if(!cfg?.encrypted) { if(statusEl) statusEl.textContent='Aucune configuration trouvee.'; return; }
     const plain = await aesDec(cfg.encrypted, pwd);
     const data  = JSON.parse(plain);
     if(data.claudeKey) S.claudeKey = data.claudeKey;
     if(data.clientId)  { S.clientId = data.clientId; ls.set('aw_client_id', data.clientId); }
-    // Mémoriser le mdp en sessionStorage (survit au F5, effacé à la fermeture du navigateur)
+
+    // Mémoriser le mdp en sessionStorage (survit au F5)
     try { sessionStorage.setItem('aw_session_pwd', pwd); } catch(e) {}
+
+    // Sauvegarder la config en local pour les prochains F5
+    ls.set('aw_cfg', JSON.stringify(cfg));
+
     document.getElementById('unlockModal')?.remove();
     updateTopbar();
-    if(S.clientId) try { initGIS(S.clientId); } catch(e){}
+
+    if(S.clientId) {
+      try { initGIS(S.clientId); } catch(e) {}
+      // Après connexion Drive → sauvegarder la config sur Drive automatiquement
+      setTimeout(async () => {
+        if(S.driveToken) {
+          try {
+            await driveReq(
+              `https://www.googleapis.com/upload/drive/v3/files/${DRIVE_CONFIG_ID}?uploadType=media`,
+              { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cfg) }
+            );
+            console.log('Config sauvegardée sur Drive après unlock.');
+          } catch(e) {}
+        }
+      }, 3000); // attend 3s que le token Drive soit prêt
+    }
     render();
   } catch(e) {
-    if(statusEl) statusEl.textContent = 'Mot de passe incorrect.';
+    if(statusEl) statusEl.textContent = '✗ Mot de passe incorrect.';
   }
 }
 
